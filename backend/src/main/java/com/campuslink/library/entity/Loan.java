@@ -22,11 +22,11 @@ public class Loan {
 
     @ManyToOne
     @JoinColumn(name = "StudentID", nullable = false)
-    private Student student;
+    private User student;
 
     @ManyToOne
     @JoinColumn(name = "LibrarianID")
-    private Librarian librarian;
+    private User librarian;
 
     private LocalDate loanDate;
 

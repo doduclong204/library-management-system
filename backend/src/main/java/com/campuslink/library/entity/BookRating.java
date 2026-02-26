@@ -18,7 +18,7 @@ public class BookRating {
 
     @ManyToOne
     @JoinColumn(name = "StudentID")
-    private Student student;
+    private User student;
 
     @ManyToOne
     @JoinColumn(name = "BookID")
