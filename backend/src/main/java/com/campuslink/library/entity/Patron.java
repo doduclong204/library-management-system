@@ -11,21 +11,22 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "authors")
-public class Author {
+@Table(name = "patrons")
+public class Patron {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false)
-    private String name;
+    @Column(unique = true, nullable = false)
+    private String email;
 
-    @ManyToMany
-    @JoinTable(
-        name = "book_authors",
-        joinColumns = @JoinColumn(name = "author_id"),
-        inverseJoinColumns = @JoinColumn(name = "book_id")
-    )
-    private List<Book> books;
+    @Column(nullable = false)
+    private String fullName;
+
+    @Column(unique = true)
+    private String studentId;
+
+    @OneToMany(mappedBy = "patron")
+    private List<BorrowRecord> borrowRecords;
 }

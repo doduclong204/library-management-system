@@ -1,8 +1,10 @@
 package com.campuslink.library.entity;
 
-import com.campuslink.library.enums.CopyStatus;
+import com.campuslink.library.enums.BookStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -10,22 +12,24 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "Book_Copy")
+@Table(name = "book_copies")
 public class BookCopy {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer copyID;
+    private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "BookID", nullable = false)
+    @JoinColumn(name = "book_id", nullable = false)
     private Book book;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true, nullable = false)
     private String barcode;
 
     @Enumerated(EnumType.STRING)
-    private CopyStatus status;
+    @Column(columnDefinition = "varchar(20) default 'available'")
+    private BookStatus status = BookStatus.available;
 
-    private String shelfLocation;
+    @OneToMany(mappedBy = "bookCopy")
+    private List<BorrowRecord> borrowRecords;
 }

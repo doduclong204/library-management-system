@@ -11,39 +11,38 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "Book")
+@Table(name = "books", indexes = {
+    @Index(columnList = "isbn", unique = true),
+    @Index(columnList = "title")
+})
 public class Book {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer bookID;
+    private Integer id;
+
+    @Column(unique = true, nullable = false)
+    private String isbn;
 
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, unique = true)
-    private String isbn;
+    private String genre;
 
-    private String publisher;
+    private Integer publicationYear;
 
-    private Integer publishYear;
+    @Column(columnDefinition = "int default 1")
+    private Integer totalCopies = 1;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
+    @Column(columnDefinition = "int default 1")
+    private Integer availableCopies = 1;
 
-    @ManyToOne
-    @JoinColumn(name = "CategoryID")
-    private Category category;
+    @Column(columnDefinition = "text")
+    private String fullText;
 
-    @OneToMany(mappedBy = "book", cascade = CascadeType.ALL)
-    private List<BookCopy> copies;
+    @ManyToMany(mappedBy = "books")
+    private List<Author> authors;
 
-    @OneToMany(mappedBy = "book", cascade = CascadeType.ALL)
-    private List<BookAuthor> bookAuthors;
-
-    @OneToMany(mappedBy = "book", cascade = CascadeType.ALL)
-    private List<DigitalBook> digitalBooks;
-
-    @OneToMany(mappedBy = "book", cascade = CascadeType.ALL)
-    private List<BookRating> ratings;
+    @OneToMany(mappedBy = "book")
+    private List<BookCopy> bookCopies;
 }
