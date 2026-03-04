@@ -1,0 +1,86 @@
+Table librarians {
+  id int [pk, increment]
+  username varchar [unique, not null]
+  email varchar [unique, not null]
+  password_hash varchar [not null]
+  full_name varchar [not null]
+}
+
+Table patrons {
+  id int [pk, increment]
+  email varchar [unique, not null]
+  full_name varchar [not null]
+  student_id varchar [unique]
+}
+
+Table books {
+  id int [pk, increment]
+  isbn varchar [unique, not null]
+  title varchar [not null]
+  genre varchar
+  publication_year int
+  total_copies int [default: 1]
+  available_copies int [default: 1]
+  full_text text
+  
+  indexes {
+    (isbn) [unique]
+    (title) [type: hash]
+  }
+}
+
+Table authors {
+  id int [pk, increment]
+  name varchar [not null]
+}
+
+Table book_authors {
+  book_id int
+  author_id int
+  
+  indexes {
+    (book_id, author_id) [pk]
+  }
+}
+
+Table book_copies {
+  id int [pk, increment]
+  book_id int [not null]
+  barcode varchar [unique, not null]
+  status enum_book_status [default: 'available']
+}
+
+Table borrow_records {
+  id int [pk, increment]
+  patron_id int [not null]
+  book_copy_id int [not null]
+  librarian_id int
+  borrow_date date [default: `now()`]
+  due_date date [not null]
+  return_date date
+  fine_amount decimal [default: 0.00]
+  status enum_borrow_status [default: 'borrowed']
+  reminder_sent boolean [default: false]
+}
+
+Enum enum_book_status {
+  available
+  borrowed
+  reserved
+  damaged
+  lost
+}
+
+Enum enum_borrow_status {
+  borrowed
+  returned
+  overdue
+  lost
+}
+
+Ref: book_copies.book_id > books.id
+Ref: borrow_records.patron_id > patrons.id
+Ref: borrow_records.book_copy_id > book_copies.id
+Ref: borrow_records.librarian_id > librarians.id
+Ref: book_authors.book_id > books.id
+Ref: book_authors.author_id > authors.id
