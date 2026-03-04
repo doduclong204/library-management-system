@@ -32,7 +32,7 @@ public class BorrowRecord {
     @JoinColumn(name = "librarian_id")
     private Librarian librarian;
 
-    @Column(columnDefinition = "date default now()")
+    @Column
     private LocalDate borrowDate;
 
     @Column(nullable = false)
@@ -40,7 +40,7 @@ public class BorrowRecord {
 
     private LocalDate returnDate;
 
-    @Column(columnDefinition = "decimal default 0.00")
+    @Column(precision = 10, scale = 2)
     private BigDecimal fineAmount = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
@@ -49,4 +49,20 @@ public class BorrowRecord {
 
     @Column(columnDefinition = "boolean default false")
     private Boolean reminderSent = false;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.borrowDate == null) {
+            this.borrowDate = LocalDate.now();
+        }
+        if (this.fineAmount == null) {
+            this.fineAmount = BigDecimal.ZERO;
+        }
+        if (this.reminderSent == null) {
+            this.reminderSent = false;
+        }
+        if (this.status == null) {
+            this.status = BorrowStatus.borrowed;
+        }
+    }
 }

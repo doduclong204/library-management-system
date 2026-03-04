@@ -12,8 +12,8 @@ import java.util.List;
 @AllArgsConstructor
 @Entity
 @Table(name = "books", indexes = {
-    @Index(columnList = "isbn", unique = true),
-    @Index(columnList = "title")
+        @Index(columnList = "isbn", unique = true),
+        @Index(columnList = "title")
 })
 public class Book {
 
