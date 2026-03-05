@@ -1,0 +1,11 @@
+ID,Title,Description,Role,Priority,Story Points,Status
+US-01,Manage Books,Librarian manages books including add edit delete and update status,Librarian,High,5,Backlog
+US-02,Borrow Book,Record borrowing book and student information,Librarian,High,5,Backlog
+US-03,Return Book,Process returning book and update book status,Librarian,High,5,Backlog
+US-04,Calculate Fine,System automatically calculates late fine,System,Medium,3,Backlog
+US-05,Email Reminder,System sends email reminder before due date,System,Medium,5,Backlog
+US-06,OCR Book Code,System extracts book code using OCR,System,Low,8,Backlog
+US-07,Login,User logs into the system,Librarian,High,3,Backlog
+US-08,Search Book,Student searches books by keyword,Student,High,8,Backlog
+US-09,View Book Status,Student views book availability,Student,Medium,3,Backlog
+US-10,View Borrowed Books,Student views borrowed books and fine amount,Student,High,5,Backlog
