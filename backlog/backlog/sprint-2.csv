@@ -1,0 +1,8 @@
+Sprint,User Story ID,Title,Task,Assignee,Status
+Sprint 2,US-02,Borrow Book,Design borrow table,,To Do
+Sprint 2,US-02,Borrow Book,Implement borrow API,,To Do
+Sprint 2,US-02,Borrow Book,Record borrow date and due date,,To Do
+Sprint 2,US-03,Return Book,Implement return API,,To Do
+Sprint 2,US-03,Return Book,Update book status,,To Do
+Sprint 2,US-04,Calculate Fine,Implement late day calculation,,To Do
+Sprint 2,US-04,Calculate Fine,Implement fine formula,,To Do
