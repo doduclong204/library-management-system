@@ -127,7 +127,7 @@ Thủ thư truy cập chức năng Quản lý sách để thêm mới, chỉnh s
 
 ### Quy trình Quét sách khi mượn
 
-Khi sinh viên đến mượn sách, thủ thư sử dụng chức năng quét mã sách (barcode hoặc mã định danh) để ghi nhận giao dịch mượn. Hệ thống cho phép thủ thư xác định người mượn, kiểm tra tình trạng tài khoản của sinh viên và kiểm tra xem sinh viên có sách quá hạn hay không. Nếu đủ điều kiện mượn, hệ thống ghi nhận giao dịch mượn, thiết lập ngày mượn và hạn trả, đồng thời cập nhật trạng thái sách thành "Đang mượn".
+Khi sinh viên đến mượn sách, thủ thư sử dụng chức năng quét mã sách (barcode hoặc mã định danh) để ghi nhận giao dịch mượn. Hệ thống cho phép thủ thư xác định người mượn, kiểm tra tình trạng tài khoản của sinh viên và kiểm tra xem email có tồn tại hay không. Nếu đủ điều kiện mượn, hệ thống ghi nhận giao dịch mượn, thiết lập ngày mượn và hạn trả, đồng thời cập nhật trạng thái sách thành "Đang mượn".
 
 ### Quy trình Nhận trả sách
 
