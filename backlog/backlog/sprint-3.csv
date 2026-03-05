@@ -1,0 +1,10 @@
+Sprint,User Story ID,Title,Task,Assignee,Status
+Sprint 3,US-08,Search Book,Implement search API,,To Do
+Sprint 3,US-08,Search Book,Implement keyword search,,To Do
+Sprint 3,US-09,View Book Status,Show book availability,,To Do
+Sprint 3,US-10,View Borrowed Books,Show borrow history,,To Do
+Sprint 3,US-10,View Borrowed Books,Show fine amount,,To Do
+Sprint 3,US-05,Email Reminder,Implement email scheduler,,To Do
+Sprint 3,US-05,Email Reminder,Send reminder email,,To Do
+Sprint 3,US-06,OCR Book Code,Upload image,,To Do
+Sprint 3,US-06,OCR Book Code,Extract text using OCR,,To Do
