@@ -368,17 +368,11 @@ flowchart TB
 | **Tên use case** | Đăng nhập |
 | **Tác nhân** | Thủ thư |
 | **Mô tả vắn tắt** | Use case cho phép Thủ thư đăng nhập vào hệ thống bằng tài khoản đã được cấp. Sau khi đăng nhập thành công, hệ thống xác thực vai trò và chuyển hướng đến giao diện quản trị. |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Use case bắt đầu khi Thủ thư truy cập trang Đăng nhập. <br> 1.2. Hệ thống hiển thị form gồm: username/email và password. <br> 1.3. Thủ thư nhập thông tin và nhấn **Đăng nhập**. <br> 1.4. Hệ thống kiểm tra dữ liệu đầu vào không được để trống. <br> 1.5. Hệ thống truy vấn bảng `librarians` để xác thực username/email và password_hash. <br> 1.6. Nếu hợp lệ: tạo session, lấy thông tin `id`, `full_name`, `email`. <br> 1.7. Hệ thống chuyển hướng đến trang quản lý thư viện. <br> 1.8. Use case kết thúc. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Bỏ trống thông tin → hiển thị "Vui lòng nhập đầy đủ thông tin đăng nhập." <br> 2.2. Sai tài khoản hoặc mật khẩu → hiển thị "Tên đăng nhập hoặc mật khẩu không đúng." <br> 2.3. Tài khoản bị khóa → hiển thị "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên." <br> 2.4. Lỗi hệ thống → hiển thị "Đăng nhập thất bại. Vui lòng thử lại sau." |
+| **Các yêu cầu đặc biệt** | Mật khẩu được mã hóa khi lưu trữ. Quản lý phiên đăng nhập an toàn. |
 | **Tiền điều kiện** | Người dùng đã có tài khoản hợp lệ. Hệ thống hoạt động bình thường. |
 | **Hậu điều kiện** | Người dùng được cấp quyền truy cập tương ứng. Phiên đăng nhập được tạo trong hệ thống. |
 | **Điểm mở rộng** | Không có |
-
-**Luồng các sự kiện**
-
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Use case bắt đầu khi Thủ thư truy cập trang Đăng nhập. <br> 2. Hệ thống hiển thị form gồm: username/email và password. <br> 3. Thủ thư nhập thông tin và nhấn **Đăng nhập**. <br> 4. Hệ thống kiểm tra dữ liệu đầu vào không được để trống. <br> 5. Hệ thống truy vấn bảng `librarians` để xác thực username/email và password_hash. <br> 6. Nếu hợp lệ: tạo session, lấy thông tin `id`, `full_name`, `email`. <br> 7. Hệ thống chuyển hướng đến trang quản lý thư viện. <br> 8. Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Bỏ trống thông tin → "Vui lòng nhập đầy đủ thông tin đăng nhập." <br> 2.2. Sai tài khoản/mật khẩu → "Tên đăng nhập hoặc mật khẩu không đúng." <br> 2.3. Tài khoản bị khóa → "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên." <br> 2.4. Lỗi hệ thống → "Đăng nhập thất bại. Vui lòng thử lại sau." |
-| **Yêu cầu đặc biệt** | Mật khẩu được mã hóa khi lưu trữ. Quản lý phiên đăng nhập an toàn. |
 
 ---
 
@@ -389,17 +383,11 @@ flowchart TB
 | **Tên use case** | Quét sách khi mượn |
 | **Tác nhân** | Thủ thư |
 | **Mô tả vắn tắt** | Use case cho phép Thủ thư quét mã vạch của sách và mã thẻ Độc giả để ghi nhận giao dịch mượn. Hệ thống kiểm tra tính hợp lệ trước khi xác nhận cho mượn, sau đó cập nhật trạng thái sách và lưu thông tin người mượn, ngày mượn, hạn trả. |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Use case bắt đầu khi Thủ thư chọn chức năng "Mượn sách". <br> 1.2. Hệ thống hiển thị giao diện quét mã Độc giả. <br> 1.3. Thủ thư quét mã thẻ Độc giả. <br> 1.4. Hệ thống kiểm tra trạng thái tài khoản (còn hiệu lực, không bị khóa, không nợ phạt quá hạn). <br> 1.5. Hệ thống hiển thị thông tin Độc giả (Họ tên, Mã thẻ, Số sách đang mượn). <br> 1.6. Thủ thư quét mã vạch sách cần mượn. <br> 1.7. Hệ thống kiểm tra tình trạng sách (còn trong kho, chưa có người mượn). <br> 1.8. Thủ thư xác nhận thao tác mượn. <br> 1.9. Hệ thống ghi nhận giao dịch vào cơ sở dữ liệu (Mã độc giả, Mã sách, Ngày mượn, Hạn trả). <br> 1.10. Hệ thống cập nhật trạng thái sách thành "Đang được mượn". <br> 1.11. Hiển thị "Mượn sách thành công." Use case kết thúc. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Độc giả có sách quá hạn → "Độc giả đang có sách quá hạn. Vui lòng xử lý trước khi mượn thêm." <br> 2.2. Đạt giới hạn số sách mượn → "Độc giả đã đạt số lượng sách mượn tối đa." <br> 2.3. Mã Độc giả không tồn tại → "Không tìm thấy thông tin Độc giả." <br> 2.4. Sách đã có người mượn → "Sách hiện không khả dụng để mượn." <br> 2.5. Mã sách không tồn tại → "Không tìm thấy thông tin sách." <br> 2.6. Thủ thư nhấn "Hủy" → hủy thao tác, không lưu dữ liệu. |
+| **Các yêu cầu đặc biệt** | Thời gian xử lý mỗi lần quét < 2 giây. Đảm bảo tính toàn vẹn dữ liệu. Lưu log giao dịch để tra cứu lịch sử. |
 | **Tiền điều kiện** | Thủ thư đã đăng nhập. Độc giả có tài khoản hợp lệ. Sách tồn tại trong cơ sở dữ liệu. Kết nối mạng hoạt động bình thường. |
 | **Hậu điều kiện** | Giao dịch mượn được lưu thành công. Trạng thái sách chuyển thành "Đang được mượn". Lịch sử mượn của Độc giả được cập nhật. |
 | **Điểm mở rộng** | In phiếu mượn sách. Gửi email nhắc trả sách trước hạn. Tích hợp xác thực bằng mã QR. |
-
-**Luồng các sự kiện**
-
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Thủ thư chọn chức năng "Mượn sách". <br> 2. Hệ thống hiển thị giao diện quét mã Độc giả. <br> 3. Thủ thư quét mã thẻ Độc giả. <br> 4. Hệ thống kiểm tra trạng thái tài khoản (còn hiệu lực, không bị khóa, không nợ phạt). <br> 5. Hệ thống hiển thị thông tin Độc giả. <br> 6. Thủ thư quét mã vạch sách. <br> 7. Hệ thống kiểm tra tình trạng sách (còn trong kho, chưa có người mượn). <br> 8. Thủ thư xác nhận thao tác mượn. <br> 9. Hệ thống ghi nhận giao dịch (Mã độc giả, Mã sách, Ngày mượn, Hạn trả). <br> 10. Cập nhật trạng thái sách thành "Đang được mượn". <br> 11. Hiển thị "Mượn sách thành công." Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Độc giả có sách quá hạn → "Độc giả đang có sách quá hạn. Vui lòng xử lý trước khi mượn thêm." <br> 2.2. Đạt giới hạn số sách mượn → "Độc giả đã đạt số lượng sách mượn tối đa." <br> 2.3. Mã Độc giả không tồn tại → "Không tìm thấy thông tin Độc giả." <br> 2.4. Sách đã có người mượn → "Sách hiện không khả dụng để mượn." <br> 2.5. Mã sách không tồn tại → "Không tìm thấy thông tin sách." <br> 2.6. Nhấn "Hủy" → hủy thao tác, không lưu dữ liệu. |
-| **Yêu cầu đặc biệt** | Thời gian xử lý mỗi lần quét < 2 giây. Đảm bảo tính toàn vẹn dữ liệu. Lưu log giao dịch để tra cứu lịch sử. |
 
 ---
 
@@ -410,17 +398,11 @@ flowchart TB
 | **Tên use case** | Tìm kiếm sách |
 | **Tác nhân** | Sinh viên |
 | **Mô tả vắn tắt** | Use case cho phép Sinh viên tìm kiếm sách thông qua từ khóa hoặc bộ lọc (tên sách, tác giả, ISBN, thể loại). Hệ thống truy vấn cơ sở dữ liệu và hiển thị kết quả phù hợp. Hỗ trợ mở rộng tìm kiếm nội dung bên trong sách và gợi ý sách liên quan. |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Use case bắt đầu khi Sinh viên truy cập trang "Tìm kiếm sách". <br> 1.2. Hệ thống hiển thị thanh tìm kiếm và các bộ lọc (Tên sách, Tác giả, ISBN, Thể loại). <br> 1.3. Sinh viên nhập từ khóa hoặc chọn bộ lọc rồi nhấn "Tìm kiếm". <br> 1.4. Hệ thống kiểm tra dữ liệu đầu vào. <br> 1.5. Hệ thống truy vấn cơ sở dữ liệu và hiển thị danh sách: Tên sách, Tác giả, Năm xuất bản, Thể loại, Tình trạng. <br> 1.6. Sinh viên có thể chọn một sách để xem chi tiết. <br> 1.7. Use case kết thúc khi kết quả tìm kiếm được hiển thị thành công. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Không nhập từ khóa → "Vui lòng nhập thông tin tìm kiếm." <br> 2.2. Không tìm thấy kết quả → "Không tìm thấy sách phù hợp với từ khóa." <br> 2.3. Lỗi hệ thống → "Hệ thống đang gặp sự cố. Vui lòng thử lại sau." <br> 2.4. Sai định dạng ISBN → "ISBN không hợp lệ." |
+| **Các yêu cầu đặc biệt** | Hỗ trợ tìm kiếm gần đúng (LIKE, full-text search). Phân trang kết quả. Thời gian phản hồi < 3 giây. |
 | **Tiền điều kiện** | Hệ thống hoạt động bình thường. Cơ sở dữ liệu đã có dữ liệu sách. Không bắt buộc đăng nhập. |
 | **Hậu điều kiện** | Danh sách kết quả hiển thị chính xác. Sinh viên có thể xem chi tiết hoặc thực hiện thao tác tiếp theo. |
 | **Điểm mở rộng** | Gợi ý từ khóa (Auto-suggestion). Tìm kiếm nội dung bên trong sách. Gợi ý sách liên quan theo chủ đề. |
-
-**Luồng các sự kiện**
-
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Sinh viên truy cập trang "Tìm kiếm sách". <br> 2. Hệ thống hiển thị thanh tìm kiếm và bộ lọc. <br> 3. Sinh viên nhập từ khóa hoặc chọn bộ lọc rồi nhấn "Tìm kiếm". <br> 4. Hệ thống truy vấn và hiển thị danh sách: Tên sách, Tác giả, Năm xuất bản, Thể loại, Tình trạng. <br> 5. Sinh viên chọn sách để xem chi tiết. Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Không nhập từ khóa → "Vui lòng nhập thông tin tìm kiếm." <br> 2.2. Không tìm thấy kết quả → "Không tìm thấy sách phù hợp với từ khóa." <br> 2.3. Lỗi hệ thống → "Hệ thống đang gặp sự cố. Vui lòng thử lại sau." <br> 2.4. Sai định dạng ISBN → "ISBN không hợp lệ." |
-| **Yêu cầu đặc biệt** | Hỗ trợ tìm kiếm gần đúng (LIKE, full-text search). Phân trang kết quả. Thời gian phản hồi < 3 giây. |
 
 ---
 
@@ -431,17 +413,11 @@ flowchart TB
 | **Tên use case** | Xem tình trạng sách |
 | **Tác nhân** | Sinh viên |
 | **Mô tả vắn tắt** | Use case cho phép Sinh viên xem tình trạng chi tiết của một cuốn sách, bao gồm số lượng còn lại và trạng thái từng bản (Có sẵn/Đang mượn). |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Use case bắt đầu khi Sinh viên chọn một cuốn sách từ danh sách tìm kiếm. <br> 1.2. Hệ thống truy vấn thông tin sách trong cơ sở dữ liệu. <br> 1.3. Hệ thống hiển thị: Tên sách, Tác giả, ISBN, Thể loại, Mô tả, Số lượng còn lại, Trạng thái (Có sẵn/Đang mượn). <br> 1.4. Sinh viên có thể chọn "Mượn sách" nếu sách còn. <br> 1.5. Use case kết thúc khi thông tin chi tiết được hiển thị đầy đủ. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Sách không tồn tại → "Không tìm thấy thông tin sách." <br> 2.2. Lỗi hệ thống → "Không thể hiển thị thông tin sách. Vui lòng thử lại sau." |
+| **Các yêu cầu đặc biệt** | Thông tin hiển thị chính xác và cập nhật theo thời gian thực. |
 | **Tiền điều kiện** | Sinh viên đã truy cập hệ thống. Sách tồn tại trong cơ sở dữ liệu. |
 | **Hậu điều kiện** | Thông tin chi tiết của sách được hiển thị đầy đủ. |
 | **Điểm mở rộng** | Hiển thị sách liên quan hoặc gợi ý tương tự. |
-
-**Luồng các sự kiện**
-
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Sinh viên chọn một cuốn sách từ danh sách tìm kiếm. <br> 2. Hệ thống truy vấn và hiển thị: Tên sách, Tác giả, ISBN, Thể loại, Số lượng còn lại, Trạng thái (Có sẵn/Đang mượn). <br> 3. Sinh viên có thể chọn "Mượn sách" nếu sách còn. Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Sách không tồn tại → "Không tìm thấy thông tin sách." <br> 2.2. Lỗi hệ thống → "Không thể hiển thị thông tin sách. Vui lòng thử lại sau." |
-| **Yêu cầu đặc biệt** | Thông tin hiển thị chính xác và cập nhật theo thời gian thực. |
 
 ---
 
@@ -451,18 +427,12 @@ flowchart TB
 |---|---|
 | **Tên use case** | Xem sách đang mượn |
 | **Tác nhân** | Sinh viên |
-| **Mô tả vắn tắt** | Use case cho phép Sinh viên theo dõi danh sách sách đang mượn qua Gmail đã cung cấp khi giao dịch, bao gồm: Tên sách, Ngày mượn, Hạn trả, Trạng thái và Số tiền phạt (nếu có). Hệ thống tự động gửi email nhắc hạn trước ngày trả. |
+| **Mô tả vắn tắt** | Use case cho phép Sinh viên theo dõi danh sách sách đang mượn qua Gmail đã cung cấp khi giao dịch, bao gồm: Tên sách, Ngày mượn, Hạn trả, Trạng thái (còn hạn/quá hạn) và Số tiền phạt (nếu có). Hệ thống tự động gửi email nhắc hạn trước ngày trả. |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Sau khi mượn sách thành công, hệ thống gửi email xác nhận đến Gmail của Sinh viên. <br> 1.2. Email chứa: Tên sách, Ngày mượn, Hạn trả, Trạng thái. <br> 1.3. Hệ thống tự động tính tiền phạt nếu quá hạn và cập nhật trong email. <br> 1.4. Trước hạn trả (1–3 ngày), hệ thống tự động gửi email nhắc hạn. <br> 1.5. Use case kết thúc. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Không có sách đang mượn → không gửi email nhắc. <br> 2.2. Sách quá hạn → email hiển thị trạng thái "Quá hạn" và số tiền phạt tương ứng. <br> 2.3. Lỗi gửi email → ghi log lỗi, thử lại lần chạy tiếp theo. |
+| **Các yêu cầu đặc biệt** | Số tiền phạt tính tự động và chính xác. Thông tin cập nhật theo thời gian thực. |
 | **Tiền điều kiện** | Sinh viên đã cung cấp Gmail khi mượn sách. Hệ thống có dữ liệu giao dịch mượn của Sinh viên. |
 | **Hậu điều kiện** | Sinh viên nắm được tình trạng mượn sách và số tiền phạt (nếu có). |
 | **Điểm mở rộng** | Gửi email tự động qua Gmail khi sắp đến hạn (trước 1–3 ngày). Cho phép yêu cầu gia hạn trực tiếp. |
-
-**Luồng các sự kiện**
-
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Sau khi mượn sách thành công, hệ thống gửi email xác nhận đến Gmail của Sinh viên. <br> 2. Email chứa: Tên sách, Ngày mượn, Hạn trả, Trạng thái. <br> 3. Hệ thống tự động tính tiền phạt nếu quá hạn và cập nhật trong email. <br> 4. Trước hạn trả (1–3 ngày), hệ thống tự động gửi email nhắc hạn. <br> 5. Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Không có sách đang mượn → không gửi email nhắc. <br> 2.2. Sách quá hạn → email hiển thị "Quá hạn" và số tiền phạt tương ứng. <br> 2.3. Lỗi gửi email → ghi log lỗi, thử lại lần sau. |
-| **Yêu cầu đặc biệt** | Số tiền phạt tính tự động và chính xác. Thông tin cập nhật theo thời gian thực. |
 
 ---
 
@@ -473,17 +443,11 @@ flowchart TB
 | **Tên use case** | Nhận trả sách |
 | **Tác nhân** | Thủ thư |
 | **Mô tả vắn tắt** | Use case cho phép Thủ thư ghi nhận việc trả sách của Độc giả. Hệ thống kiểm tra thông tin giao dịch, tính tiền phạt nếu quá hạn và cập nhật trạng thái sách về "Có sẵn". |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Use case bắt đầu khi Thủ thư chọn chức năng "Trả sách". <br> 1.2. Hệ thống hiển thị giao diện quét mã sách. <br> 1.3. Thủ thư quét mã sách cần trả. <br> 1.4. Hệ thống truy xuất và hiển thị: Tên sách, Tên Độc giả, Ngày mượn, Hạn trả, Số ngày quá hạn, Tiền phạt (nếu có). <br> 1.5. Thủ thư xác nhận đã nhận lại sách. <br> 1.6. Hệ thống cập nhật: ngày trả thực tế, trạng thái sách "Có sẵn", giao dịch "Đã hoàn tất". <br> 1.7. Hiển thị "Trả sách thành công." Use case kết thúc. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Sách quá hạn → hiển thị tiền phạt, yêu cầu xác nhận thanh toán trước khi hoàn tất. <br> 2.2. Mã sách không tồn tại → "Không tìm thấy thông tin sách." <br> 2.3. Sách chưa từng được mượn → "Sách hiện không có giao dịch mượn." <br> 2.4. Nhấn "Hủy" → hủy thao tác, không cập nhật dữ liệu. <br> 2.5. Lỗi cơ sở dữ liệu → "Không thể xử lý yêu cầu, vui lòng thử lại." |
+| **Các yêu cầu đặc biệt** | Tính tiền phạt tự động và chính xác. Thời gian xử lý < 2 giây. Lưu lịch sử giao dịch để tra cứu. |
 | **Tiền điều kiện** | Thủ thư đã đăng nhập. Sách đang ở trạng thái "Đang được mượn". Cơ sở dữ liệu hoạt động bình thường. |
 | **Hậu điều kiện** | Sách cập nhật về "Có sẵn". Giao dịch đánh dấu "Đã hoàn tất". Tiền phạt (nếu có) được ghi nhận. |
 | **Điểm mở rộng** | Thanh toán tiền phạt trực tuyến. Gửi email xác nhận trả sách. Thống kê lượt trả theo ngày/tháng. |
-
-**Luồng các sự kiện**
-
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Thủ thư chọn chức năng "Trả sách". <br> 2. Hệ thống hiển thị giao diện quét mã sách. <br> 3. Thủ thư quét mã sách cần trả. <br> 4. Hệ thống hiển thị: Tên sách, Tên Độc giả, Ngày mượn, Hạn trả, Số ngày quá hạn, Tiền phạt. <br> 5. Thủ thư xác nhận đã nhận lại sách. <br> 6. Hệ thống cập nhật: ngày trả thực tế, trạng thái "Có sẵn", giao dịch "Đã hoàn tất". <br> 7. Hiển thị "Trả sách thành công." Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Sách quá hạn → hiển thị tiền phạt, yêu cầu xác nhận thanh toán trước khi hoàn tất. <br> 2.2. Mã sách không tồn tại → "Không tìm thấy thông tin sách." <br> 2.3. Sách chưa từng được mượn → "Sách hiện không có giao dịch mượn." <br> 2.4. Nhấn "Hủy" → hủy thao tác, không cập nhật dữ liệu. <br> 2.5. Lỗi cơ sở dữ liệu → "Không thể xử lý yêu cầu, vui lòng thử lại." |
-| **Yêu cầu đặc biệt** | Tính tiền phạt tự động và chính xác. Thời gian xử lý < 2 giây. Lưu lịch sử giao dịch để tra cứu. |
 
 ---
 
@@ -494,17 +458,11 @@ flowchart TB
 | **Tên use case** | Tự động tính tiền phạt |
 | **Tác nhân** | Hệ thống (kích hoạt khi nhận trả sách hoặc Sinh viên xem sách đang mượn) |
 | **Mô tả vắn tắt** | Hệ thống tự động tính tiền phạt khi sách trả quá hạn dựa trên số ngày quá hạn và mức phí đã cấu hình. Kết quả hiển thị cho Thủ thư và được lưu vào cơ sở dữ liệu. |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Use case được kích hoạt khi phát sinh sự kiện kiểm tra hạn trả. <br> 1.2. Hệ thống lấy thông tin: Ngày mượn, Hạn trả, Ngày trả thực tế (hoặc ngày hiện tại nếu chưa trả). <br> 1.3. Hệ thống so sánh ngày trả thực tế với hạn trả. <br> 1.4. Nếu quá hạn: tính số ngày quá hạn. <br> 1.5. Áp dụng công thức: **Tiền phạt = Số ngày quá hạn × Mức phí/ngày**. <br> 1.6. Hệ thống hiển thị: Số ngày quá hạn, Mức phí/ngày, Tổng tiền phạt. <br> 1.7. Hệ thống lưu thông tin tiền phạt vào cơ sở dữ liệu. <br> 1.8. Use case kết thúc. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Trả đúng hạn hoặc trước hạn → hiển thị "Không phát sinh tiền phạt." <br> 2.2. Mức phí khác nhau theo loại sách → áp dụng mức phí tương ứng với loại sách đó. <br> 2.3. Lỗi truy xuất dữ liệu → "Không thể tính tiền phạt, vui lòng thử lại." |
+| **Các yêu cầu đặc biệt** | Tính toán tuyệt đối chính xác. Thời gian xử lý < 1 giây. Mức phí có thể cấu hình trong hệ thống. Không tính trùng tiền phạt cho cùng một giao dịch. |
 | **Tiền điều kiện** | Tồn tại giao dịch mượn hợp lệ. Có thông tin hạn trả rõ ràng. Mức phí phạt/ngày đã được thiết lập. |
 | **Hậu điều kiện** | Tiền phạt được tính chính xác và lưu vào cơ sở dữ liệu. Dữ liệu phục vụ báo cáo thống kê. |
 | **Điểm mở rộng** | Cấu hình nhiều mức phạt theo loại sách hoặc đối tượng Độc giả. Tích hợp thanh toán trực tuyến. |
-
-**Luồng các sự kiện**
-
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Hệ thống lấy: Ngày mượn, Hạn trả, Ngày trả thực tế (hoặc ngày hiện tại). <br> 2. Hệ thống so sánh ngày trả với hạn trả. <br> 3. Nếu quá hạn: tính số ngày quá hạn. <br> 4. Áp dụng công thức: **Tiền phạt = Số ngày quá hạn × Mức phí/ngày**. <br> 5. Hiển thị: Số ngày quá hạn, Mức phí/ngày, Tổng tiền phạt. <br> 6. Lưu thông tin tiền phạt vào cơ sở dữ liệu. Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Trả đúng/trước hạn → "Không phát sinh tiền phạt." <br> 2.2. Mức phí khác nhau theo loại sách → áp dụng mức phí tương ứng. <br> 2.3. Lỗi truy xuất dữ liệu → "Không thể tính tiền phạt, vui lòng thử lại." |
-| **Yêu cầu đặc biệt** | Tính toán tuyệt đối chính xác. Thời gian xử lý < 1 giây. Mức phí có thể cấu hình. Không tính trùng tiền phạt cho cùng một giao dịch. |
 
 ---
 
@@ -515,17 +473,11 @@ flowchart TB
 | **Tên use case** | Tự động thông báo nhắc hạn trả sách |
 | **Tác nhân** | Hệ thống (chạy tự động theo lịch) |
 | **Mô tả vắn tắt** | Hệ thống tự động gửi email nhắc nhở Sinh viên khi sắp đến hạn hoặc đã quá hạn trả sách, giúp giảm tình trạng trả sách muộn và hạn chế phát sinh tiền phạt. |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Use case được kích hoạt tự động theo lịch (mỗi ngày lúc 00:00). <br> 1.2. Hệ thống truy xuất danh sách các giao dịch mượn chưa hoàn tất. <br> 1.3. Hệ thống kiểm tra: sách sắp đến hạn (còn 1–3 ngày) và sách đã quá hạn. <br> 1.4. Hệ thống tạo nội dung email: Tên sách, Ngày mượn, Hạn trả, Số ngày còn lại hoặc quá hạn. <br> 1.5. Hệ thống gửi email đến Gmail của Sinh viên. <br> 1.6. Hệ thống ghi nhận trạng thái đã gửi thông báo. <br> 1.7. Use case kết thúc. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Không có sách sắp hạn/quá hạn → hệ thống không gửi thông báo. <br> 2.2. Gửi email thất bại → ghi log lỗi, thử gửi lại vào lần chạy tiếp theo. <br> 2.3. Sinh viên đã trả sách trước khi hệ thống gửi → không gửi thông báo nữa. |
+| **Các yêu cầu đặc biệt** | Không gửi trùng thông báo trong cùng một ngày. Nội dung email rõ ràng và chính xác. Có thể cấu hình số ngày nhắc trước hạn. |
 | **Tiền điều kiện** | Tồn tại giao dịch mượn chưa hoàn tất. Hệ thống có Gmail hợp lệ của Sinh viên. Máy chủ gửi email hoạt động bình thường. |
 | **Hậu điều kiện** | Sinh viên nhận được thông báo nhắc trả sách. Hệ thống lưu lịch sử gửi thông báo. |
-| **Điểm mở rộng** | Gửi thông báo qua nhiều kênh (Email, SMS). Cho phép Sinh viên yêu cầu gia hạn từ email. |
-
-**Luồng các sự kiện**
-
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Hệ thống tự động chạy theo lịch (mỗi ngày lúc 00:00). <br> 2. Truy xuất danh sách giao dịch mượn chưa hoàn tất. <br> 3. Kiểm tra: sách sắp đến hạn (còn 1–3 ngày) và sách đã quá hạn. <br> 4. Tạo nội dung email: Tên sách, Ngày mượn, Hạn trả, Số ngày còn lại/quá hạn. <br> 5. Gửi email đến Gmail của Sinh viên. <br> 6. Ghi nhận trạng thái đã gửi. Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Không có sách sắp hạn/quá hạn → không gửi thông báo. <br> 2.2. Gửi email thất bại → ghi log lỗi, thử lại lần chạy tiếp theo. <br> 2.3. Sinh viên đã trả trước khi gửi → không gửi thông báo. |
-| **Yêu cầu đặc biệt** | Không gửi trùng thông báo trong cùng một ngày. Nội dung email rõ ràng và chính xác. Có thể cấu hình số ngày nhắc trước hạn. |
+| **Điểm mở rộng** | Gửi thông báo qua nhiều kênh (Email, SMS). Cho phép Sinh viên yêu cầu gia hạn trực tiếp từ email. |
 
 ---
 
@@ -536,17 +488,11 @@ flowchart TB
 | **Tên use case** | OCR – Dữ liệu số |
 | **Tác nhân** | Thủ thư |
 | **Mô tả vắn tắt** | Use case cho phép Thủ thư sử dụng công nghệ OCR để trích xuất dữ liệu từ hình ảnh hoặc tài liệu scan (ISBN, mã sách, thông tin sách). Dữ liệu sau khi nhận dạng được kiểm tra và lưu vào cơ sở dữ liệu, giảm nhập liệu thủ công và hỗ trợ tìm kiếm nội dung sách. |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Use case bắt đầu khi Thủ thư chọn chức năng "Quét tài liệu bằng OCR". <br> 1.2. Thủ thư tải lên file hình ảnh hoặc tài liệu scan (PNG, JPG, PDF). <br> 1.3. Hệ thống tiền xử lý ảnh (lọc nhiễu, tăng độ tương phản). <br> 1.4. Hệ thống thực hiện nhận dạng ký tự bằng công nghệ OCR. <br> 1.5. Hệ thống trích xuất dữ liệu: ISBN, mã sách, năm xuất bản. <br> 1.6. Hệ thống hiển thị kết quả để Thủ thư kiểm tra và chỉnh sửa nếu cần. <br> 1.7. Thủ thư xác nhận thông tin. <br> 1.8. Hệ thống lưu dữ liệu vào cơ sở dữ liệu. <br> 1.9. Hiển thị "Trích xuất và lưu dữ liệu thành công." Use case kết thúc. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Ảnh mờ hoặc chất lượng thấp → "Không thể nhận dạng. Vui lòng tải ảnh rõ nét hơn." <br> 2.2. Không tìm thấy dữ liệu hợp lệ → "Không phát hiện dữ liệu phù hợp." <br> 2.3. Thủ thư hủy → dừng xử lý, không lưu dữ liệu. <br> 2.4. Sai định dạng file → "Định dạng file không được hỗ trợ." |
+| **Các yêu cầu đặc biệt** | Hỗ trợ JPG, PNG, PDF. Độ chính xác nhận dạng ≥ 90% với ảnh rõ nét. Thời gian xử lý < 5 giây. |
 | **Tiền điều kiện** | Thủ thư đã đăng nhập. File tải lên hợp lệ. Hệ thống OCR hoạt động bình thường. |
-| **Hậu điều kiện** | Dữ liệu số được trích xuất và lưu thành công. Giảm sai sót nhập liệu thủ công. |
+| **Hậu điều kiện** | Dữ liệu số được trích xuất và lưu thành công. Giảm sai sót do nhập liệu thủ công. |
 | **Điểm mở rộng** | Tự động điền biểu mẫu thêm sách từ dữ liệu OCR. Kết nối API tra cứu thông tin sách theo ISBN. Hỗ trợ nhận dạng tiếng Việt có dấu. |
-
-**Luồng các sự kiện**
-
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Thủ thư chọn chức năng "Quét tài liệu bằng OCR". <br> 2. Tải lên file hình ảnh hoặc tài liệu scan (PNG, JPG, PDF). <br> 3. Hệ thống tiền xử lý ảnh (lọc nhiễu, tăng tương phản). <br> 4. Hệ thống thực hiện nhận dạng ký tự OCR. <br> 5. Trích xuất dữ liệu: ISBN, mã sách, năm xuất bản. <br> 6. Hiển thị kết quả để Thủ thư kiểm tra và chỉnh sửa nếu cần. <br> 7. Hệ thống lưu dữ liệu vào cơ sở dữ liệu. <br> 8. Hiển thị "Trích xuất và lưu dữ liệu thành công." Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Ảnh mờ/chất lượng thấp → "Không thể nhận dạng. Vui lòng tải ảnh rõ nét hơn." <br> 2.2. Không tìm thấy dữ liệu hợp lệ → "Không phát hiện dữ liệu phù hợp." <br> 2.3. Thủ thư hủy → dừng xử lý, không lưu. <br> 2.4. Sai định dạng file → "Định dạng file không được hỗ trợ." |
-| **Yêu cầu đặc biệt** | Hỗ trợ JPG, PNG, PDF. Độ chính xác nhận dạng ≥ 90% với ảnh rõ nét. Thời gian xử lý < 5 giây. |
 
 ---
 
@@ -557,14 +503,10 @@ flowchart TB
 | **Tên use case** | Quản lý sách |
 | **Tác nhân** | Thủ thư |
 | **Mô tả vắn tắt** | Use case cho phép Thủ thư thêm mới, chỉnh sửa thông tin và cập nhật trạng thái sách (Có sẵn, Đang được mượn, Mất, Hư hỏng, Thanh lý), đảm bảo dữ liệu tồn kho chính xác và phản ánh đúng thực tế. |
+| **Luồng các sự kiện** | **1. Luồng cơ bản** <br><br> 1.1. Use case bắt đầu khi Thủ thư chọn chức năng "Quản lý sách". <br> 1.2. Hệ thống hiển thị danh sách sách hiện có trong cơ sở dữ liệu. <br> 1.3. Thủ thư tìm kiếm hoặc chọn sách cần thao tác. <br> 1.4. Thủ thư chọn: Thêm mới / Chỉnh sửa / Cập nhật trạng thái. <br> 1.5. Nhập hoặc chỉnh sửa thông tin (Tên sách, Tác giả, ISBN, Số lượng, Trạng thái). <br> 1.6. Nhấn "Lưu". <br> 1.7. Hệ thống kiểm tra tính hợp lệ và lưu vào cơ sở dữ liệu. <br> 1.8. Hiển thị "Cập nhật thành công." Use case kết thúc. <br><br> **2. Các luồng rẽ nhánh** <br><br> 2.1. Sách đang "Đang được mượn" → không cho chuyển "Có sẵn" nếu chưa thực hiện trả sách hợp lệ. <br> 2.2. Chọn trạng thái "Thanh lý" → yêu cầu xác nhận lại trước khi cập nhật. <br> 2.3. Không tìm thấy sách → "Không tìm thấy thông tin sách." <br> 2.4. Nhấn "Hủy" → quay lại danh sách, không lưu thay đổi. <br> 2.5. Lỗi hệ thống → "Không thể cập nhật, vui lòng thử lại." |
+| **Các yêu cầu đặc biệt** | Thời gian cập nhật < 2 giây. Mọi thay đổi trạng thái phải lưu log. Chỉ tài khoản Admin mới được cập nhật trạng thái. Không cho phép thao tác trái logic nghiệp vụ. |
 | **Tiền điều kiện** | Thủ thư đã đăng nhập. Sách tồn tại trong cơ sở dữ liệu (với thao tác chỉnh sửa/cập nhật). Cơ sở dữ liệu hoạt động bình thường. |
 | **Hậu điều kiện** | Thông tin/trạng thái sách được cập nhật chính xác. Dữ liệu tồn kho đồng bộ với thực tế. Thay đổi được ghi vào lịch sử quản lý. |
 | **Điểm mở rộng** | Cập nhật trạng thái hàng loạt (Bulk Update). Tích hợp tự động chuyển trạng thái khi mượn/trả. Xuất báo cáo thống kê theo trạng thái. |
 
-**Luồng các sự kiện**
 
-| | Nội dung |
-|---|---|
-| **Luồng cơ bản** | 1. Thủ thư chọn chức năng "Quản lý sách". <br> 2. Hệ thống hiển thị danh sách sách hiện có. <br> 3. Thủ thư tìm kiếm hoặc chọn sách cần thao tác. <br> 4. Thủ thư chọn: Thêm mới / Chỉnh sửa / Cập nhật trạng thái. <br> 5. Nhập hoặc chỉnh sửa thông tin (Tên sách, Tác giả, ISBN, Số lượng, Trạng thái). <br> 6. Nhấn "Lưu". <br> 7. Hệ thống kiểm tra tính hợp lệ và lưu vào cơ sở dữ liệu. <br> 8. Hiển thị "Cập nhật thành công." Use case kết thúc. |
-| **Luồng rẽ nhánh** | 2.1. Sách đang "Đang được mượn" → không cho chuyển "Có sẵn" nếu chưa thực hiện trả sách hợp lệ. <br> 2.2. Chọn trạng thái "Thanh lý" → yêu cầu xác nhận lại trước khi cập nhật. <br> 2.3. Không tìm thấy sách → "Không tìm thấy thông tin sách." <br> 2.4. Nhấn "Hủy" → quay lại danh sách, không lưu thay đổi. <br> 2.5. Lỗi hệ thống → "Không thể cập nhật, vui lòng thử lại." |
-| **Yêu cầu đặc biệt** | Thời gian cập nhật < 2 giây. Mọi thay đổi trạng thái phải lưu log. Chỉ tài khoản Admin mới được cập nhật trạng thái. Không cho phép thao tác trái logic nghiệp vụ. |
