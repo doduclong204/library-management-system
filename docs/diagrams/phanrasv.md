@@ -23,5 +23,4 @@ flowchart TB
 
     tk1 -.->|«extend»| tk2
     tk1 -.->|«extend»| tk3
-    ...
 ```

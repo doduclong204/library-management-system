@@ -30,5 +30,4 @@ flowchart LR
     TT --> tt5
     TT --> tt6
     TT --> tt7
-    ...
 ```

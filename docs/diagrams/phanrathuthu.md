@@ -41,5 +41,4 @@ flowchart TB
     end
 
     qs2 -.->|«extend»| qs3
-    ...
 ```
