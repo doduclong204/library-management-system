@@ -509,4 +509,1033 @@ flowchart TB
 | **Hậu điều kiện** | Thông tin/trạng thái sách được cập nhật chính xác. Dữ liệu tồn kho đồng bộ với thực tế. Thay đổi được ghi vào lịch sử quản lý. |
 | **Điểm mở rộng** | Cập nhật trạng thái hàng loạt (Bulk Update). Tích hợp tự động chuyển trạng thái khi mượn/trả. Xuất báo cáo thống kê theo trạng thái. |
 
+---
 
+## 2.3. Phân tích các use case
+
+---
+
+### 2.3.1. Phân tích use case Đăng nhập
+
+#### 2.3.1.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    actor ThuThu as :ThuThu
+    participant UI as :DangNhapUI
+    participant CTRL as :DangNhapController
+    participant DB as :librarians
+
+    ThuThu->>UI: 1. truyCapTrangDangNhap()
+    UI-->>ThuThu: 2. hienThiFormDangNhap()
+    ThuThu->>UI: 3. nhapUsernameVaPassword()
+    UI->>CTRL: 4. xacThucDangNhap(username, password)
+    CTRL->>DB: 5. findByUsername(username)
+    DB-->>CTRL: 6. return thongTinTaiKhoan
+    CTRL->>CTRL: 7. kiemTraPasswordHash(password, passwordHash)
+    alt Thông tin hợp lệ
+        CTRL-->>UI: 8. return taoSession(id, fullName, email)
+        UI-->>ThuThu: 9. chuyenHuongTrangQuanTri()
+    else Bỏ trống thông tin
+        CTRL-->>UI: 8a. return loi("Vui lòng nhập đầy đủ thông tin")
+        UI-->>ThuThu: 9a. hienThiThongBaoLoi()
+    else Sai tài khoản hoặc mật khẩu
+        CTRL-->>UI: 8b. return loi("Tên đăng nhập hoặc mật khẩu không đúng")
+        UI-->>ThuThu: 9b. hienThiThongBaoLoi()
+    end
+```
+
+*Hình 2.4. Biểu đồ trình tự – Đăng nhập*
+
+---
+
+#### 2.3.1.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class DangNhapUI {
+        <<boundary>>
+        +truyCapTrangDangNhap()
+        +hienThiFormDangNhap()
+        +nhapUsernameVaPassword()
+        +hienThiThongBaoLoi()
+        +chuyenHuongTrangQuanTri()
+    }
+    class DangNhapController {
+        <<control>>
+        +xacThucDangNhap(username, password)
+        +kiemTraPasswordHash(password, hash)
+        +taoSession(id, fullName, email)
+    }
+    class librarians {
+        <<entity>>
+        +id : INT
+        +username : VARCHAR
+        +email : VARCHAR
+        +full_name : VARCHAR
+        +password_hash : VARCHAR
+        +findByUsername(username)
+        +getId()
+        +getEmail()
+        +getFullName()
+        +getPasswordHash()
+    }
+    DangNhapUI "1" -- "1" DangNhapController
+    DangNhapController "1" -- "1" librarians
+```
+
+*Hình 2.5. Biểu đồ lớp phân tích – Đăng nhập*
+
+---
+
+### 2.3.2. Phân tích use case Quản lý sách
+
+#### 2.3.2.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    actor ThuThu as :ThuThu
+    participant UI as :QuanLySachUI
+    participant CTRL as :QuanLySachController
+    participant B as :books
+    participant BC as :book_copies
+
+    ThuThu->>UI: 1. clickQuanLySach()
+    UI->>CTRL: 2. getDSSach()
+    CTRL->>B: 3. getDSSach()
+    B-->>CTRL: 4. return danhSachSach
+    CTRL-->>UI: 5. return danhSachSach
+    UI-->>ThuThu: 6. hienThiDSSachVaTuyChon(them, sua, xoa)
+
+    alt Thêm sách mới
+        ThuThu->>UI: 7. clickTaoMoi()
+        UI-->>ThuThu: 8. hienThiFormNhap()
+        ThuThu->>UI: 9. nhapTTSachVaLuu(title, isbn, genre, year, totalCopies)
+        UI->>CTRL: 10. setSachMoi(title, isbn, genre, year, totalCopies)
+        CTRL->>B: 11. setSachMoi(title, isbn, genre, year, totalCopies)
+        B-->>CTRL: 12. return bookId
+        CTRL->>BC: 13. taoBookCopies(bookId, barcode, status)
+        BC-->>CTRL: 14. return ketQua
+        CTRL-->>UI: 15. return "Thêm sách thành công"
+        UI-->>ThuThu: 16. hienThiDSSach()
+    else Chỉnh sửa thông tin sách
+        ThuThu->>UI: 17. chonSachVaClickCapNhat()
+        UI-->>ThuThu: 18. hienThiFormSua()
+        ThuThu->>UI: 19. suaTTSachVaLuu()
+        UI->>CTRL: 20. setSachById(id, data)
+        CTRL->>B: 21. setSachById(id, data)
+        B-->>CTRL: 22. return ketQua
+        CTRL-->>UI: 23. return ketQua
+        UI-->>ThuThu: 24. hienThiDSSach()
+    else Cập nhật trạng thái bản sách
+        ThuThu->>UI: 25. chonBanSachVaCapNhatTrangThai(copyId, status)
+        UI->>CTRL: 26. capNhatTrangThai(copyId, status)
+        CTRL->>BC: 27. setStatus(copyId, status)
+        BC-->>CTRL: 28. return ketQua
+        CTRL-->>UI: 29. return ketQua
+        UI-->>ThuThu: 30. thongBao("Cập nhật thành công")
+    end
+```
+
+*Hình 2.6. Biểu đồ trình tự – Quản lý sách*
+
+---
+
+#### 2.3.2.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class QuanLySachUI {
+        <<boundary>>
+        +clickQuanLySach()
+        +hienThiFormNhap()
+        +nhapTTSachVaLuu()
+        +chonSachVaClickCapNhat()
+        +suaTTSachVaLuu()
+        +chonBanSachVaCapNhatTrangThai()
+        +hienThiDSSach()
+    }
+    class QuanLySachController {
+        <<control>>
+        +getDSSach()
+        +setSachMoi(title, isbn, genre, year, totalCopies)
+        +setSachById(id, data)
+        +capNhatTrangThai(copyId, status)
+    }
+    class books {
+        <<entity>>
+        +id : INT
+        +title : VARCHAR
+        +isbn : VARCHAR
+        +genre : VARCHAR
+        +publication_year : INT
+        +total_copies : INT
+        +available_copies : INT
+        +full_text : TEXT
+        +getDSSach()
+        +setSachMoi()
+        +setSachById()
+        +getId()
+        +getTitle()
+        +getAvailableCopies()
+    }
+    class book_copies {
+        <<entity>>
+        +id : INT
+        +barcode : VARCHAR
+        +status : VARCHAR
+        +book_id : INT
+        +taoBookCopies(bookId, barcode, status)
+        +findByBookId(bookId)
+        +setStatus(id, status)
+        +getBarcode()
+        +getStatus()
+    }
+    QuanLySachUI "1" -- "1" QuanLySachController
+    QuanLySachController "1" -- "n" books
+    QuanLySachController "1" -- "n" book_copies
+    books "1" -- "n" book_copies
+```
+
+*Hình 2.7. Biểu đồ lớp phân tích – Quản lý sách*
+
+---
+
+### 2.3.3. Phân tích use case Quét sách khi mượn
+
+#### 2.3.3.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    actor ThuThu as :ThuThu
+    participant UI as :MuonSachUI
+    participant CTRL as :MuonSachController
+    participant BC as :book_copies
+    participant P as :patrons
+    participant BR as :borrow_records
+
+    ThuThu->>UI: 1. clickMuonSach()
+    UI-->>ThuThu: 2. hienThiGiaoDienQuetBarcode()
+    ThuThu->>UI: 3. quetBarcodeSach(barcode)
+    UI->>CTRL: 4. kiemTraSach(barcode)
+    CTRL->>BC: 5. findByBarcode(barcode)
+    BC-->>CTRL: 6. return thongTinBanSach(id, status, bookId)
+    alt Mã sách không tồn tại
+        CTRL-->>UI: 6a. return loi("Không tìm thấy thông tin sách")
+        UI-->>ThuThu: 6b. hienThiThongBaoLoi()
+    else Sách đang được mượn
+        CTRL-->>UI: 6c. return loi("Sách hiện không khả dụng")
+        UI-->>ThuThu: 6d. hienThiThongBaoLoi()
+    end
+    ThuThu->>UI: 7. nhapEmailDocGia(email)
+    UI->>CTRL: 8. kiemTraDocGia(email)
+    CTRL->>P: 9. findByEmail(email)
+    P-->>CTRL: 10. return thongTinDocGia(id, fullName)
+    alt Email không tồn tại
+        CTRL-->>UI: 10a. return loi("Không tìm thấy thông tin độc giả")
+        UI-->>ThuThu: 10b. hienThiThongBaoLoi()
+    end
+    CTRL->>BR: 11. kiemTraSachQuaHan(patronId)
+    BR-->>CTRL: 12. return danhSachQuaHan
+    alt Có sách quá hạn
+        CTRL-->>UI: 12a. return loi("Độc giả đang có sách quá hạn")
+        UI-->>ThuThu: 12b. hienThiThongBaoLoi()
+    end
+    ThuThu->>UI: 13. xacNhanMuon()
+    UI->>CTRL: 14. ghiNhanMuon(bookCopyId, patronId, librarianId, borrowDate, dueDate)
+    CTRL->>BR: 15. setGiaoDichMuon(bookCopyId, patronId, librarianId, borrowDate, dueDate)
+    BR-->>CTRL: 16. return recordId
+    CTRL->>BC: 17. setStatus(bookCopyId, "borrowed")
+    BC-->>CTRL: 18. return ketQua
+    CTRL-->>UI: 19. return "Mượn sách thành công"
+    UI-->>ThuThu: 20. hienThiThongBaoThanhCong()
+```
+
+*Hình 2.8. Biểu đồ trình tự – Quét sách khi mượn*
+
+---
+
+#### 2.3.3.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class MuonSachUI {
+        <<boundary>>
+        +clickMuonSach()
+        +hienThiGiaoDienQuetBarcode()
+        +quetBarcodeSach(barcode)
+        +nhapEmailDocGia(email)
+        +xacNhanMuon()
+        +hienThiThongBaoLoi()
+        +hienThiThongBaoThanhCong()
+    }
+    class MuonSachController {
+        <<control>>
+        +kiemTraSach(barcode)
+        +kiemTraDocGia(email)
+        +kiemTraSachQuaHan(patronId)
+        +ghiNhanMuon(bookCopyId, patronId, librarianId, borrowDate, dueDate)
+        +capNhatTrangThaiSach(bookCopyId, status)
+    }
+    class book_copies {
+        <<entity>>
+        +id : INT
+        +barcode : VARCHAR
+        +status : VARCHAR
+        +book_id : INT
+        +findByBarcode(barcode)
+        +getStatus()
+        +setStatus(id, status)
+    }
+    class patrons {
+        <<entity>>
+        +id : INT
+        +email : VARCHAR
+        +full_name : VARCHAR
+        +student_id : VARCHAR
+        +findByEmail(email)
+        +getId()
+        +getEmail()
+        +getFullName()
+    }
+    class borrow_records {
+        <<entity>>
+        +id : INT
+        +borrow_date : DATE
+        +due_date : DATE
+        +return_date : DATE
+        +fine_amount : DECIMAL
+        +reminder_sent : TINYINT
+        +status : VARCHAR
+        +book_copy_id : INT
+        +librarian_id : INT
+        +patron_id : INT
+        +setGiaoDichMuon()
+        +kiemTraQuaHan(patronId)
+        +getId()
+        +getStatus()
+    }
+    MuonSachUI "1" -- "1" MuonSachController
+    MuonSachController "1" -- "1" book_copies
+    MuonSachController "1" -- "1" patrons
+    MuonSachController "1" -- "n" borrow_records
+    borrow_records "n" -- "1" patrons
+    borrow_records "1" -- "1" book_copies
+```
+
+*Hình 2.9. Biểu đồ lớp phân tích – Quét sách khi mượn*
+
+---
+
+### 2.3.4. Phân tích use case Tìm kiếm sách
+
+#### 2.3.4.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    actor SinhVien as :SinhVien
+    participant UI as :TimKiemSachUI
+    participant CTRL as :TimKiemSachController
+    participant B as :books
+    participant BA as :book_authors
+    participant A as :authors
+
+    SinhVien->>UI: 1. truyCapTrangTimKiem()
+    UI-->>SinhVien: 2. hienThiThanhTimKiemVaBoLoc()
+    SinhVien->>UI: 3. nhapTuKhoa(keyword, filter)
+    UI->>CTRL: 4. kiemTraDuLieuDauVao(keyword)
+    alt Bỏ trống từ khóa
+        CTRL-->>UI: 4a. return loi("Vui lòng nhập thông tin tìm kiếm")
+        UI-->>SinhVien: 4b. hienThiThongBaoLoi()
+    end
+    CTRL->>B: 5. searchByTitleOrIsbn(keyword)
+    B-->>CTRL: 6. return danhSachSach
+    CTRL->>BA: 7. getAuthorsByBookIds(bookIds)
+    BA->>A: 8. getAuthorNames(authorIds)
+    A-->>BA: 9. return danhSachTacGia
+    BA-->>CTRL: 10. return danhSachTacGia
+    alt Không tìm thấy kết quả
+        CTRL-->>UI: 10a. return rong
+        UI-->>SinhVien: 10b. hienThiLoi("Không tìm thấy sách phù hợp")
+    else Có kết quả
+        CTRL-->>UI: 11. return danhSachSach(title, author, isbn, genre, availableCopies)
+        UI-->>SinhVien: 12. hienThiDanhSachKetQua()
+    end
+    SinhVien->>UI: 13. chonSachXemChiTiet(bookId)
+    UI->>CTRL: 14. getChiTietSach(bookId)
+    CTRL->>B: 15. findById(bookId)
+    B-->>CTRL: 16. return chiTietSach
+    CTRL-->>UI: 17. return chiTietSach
+    UI-->>SinhVien: 18. hienThiChiTietSach()
+```
+
+*Hình 2.10. Biểu đồ trình tự – Tìm kiếm sách*
+
+---
+
+#### 2.3.4.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class TimKiemSachUI {
+        <<boundary>>
+        +truyCapTrangTimKiem()
+        +hienThiThanhTimKiemVaBoLoc()
+        +nhapTuKhoa(keyword, filter)
+        +hienThiDanhSachKetQua()
+        +hienThiChiTietSach()
+        +hienThiLoi(message)
+    }
+    class TimKiemSachController {
+        <<control>>
+        +kiemTraDuLieuDauVao(keyword)
+        +timKiemSach(keyword, filter)
+        +getChiTietSach(bookId)
+        +getAuthorsByBookIds(bookIds)
+    }
+    class books {
+        <<entity>>
+        +id : INT
+        +title : VARCHAR
+        +isbn : VARCHAR
+        +genre : VARCHAR
+        +publication_year : INT
+        +available_copies : INT
+        +total_copies : INT
+        +full_text : TEXT
+        +searchByTitleOrIsbn(keyword)
+        +findById(bookId)
+        +getAvailableCopies()
+        +getTitle()
+    }
+    class book_authors {
+        <<entity>>
+        +author_id : INT
+        +book_id : INT
+        +getAuthorsByBookId(bookId)
+        +getAuthorId()
+        +getBookId()
+    }
+    class authors {
+        <<entity>>
+        +id : INT
+        +name : VARCHAR
+        +getAuthorNames(authorIds)
+        +findById(id)
+        +getName()
+    }
+    TimKiemSachUI "1" -- "1" TimKiemSachController
+    TimKiemSachController "1" -- "n" books
+    TimKiemSachController "1" -- "1" book_authors
+    book_authors "n" -- "1" authors
+    book_authors "n" -- "1" books
+```
+
+*Hình 2.11. Biểu đồ lớp phân tích – Tìm kiếm sách*
+
+---
+
+### 2.3.5. Phân tích use case Xem tình trạng sách
+
+#### 2.3.5.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    actor SinhVien as :SinhVien
+    participant UI as :TinhTrangSachUI
+    participant CTRL as :TinhTrangSachController
+    participant B as :books
+    participant BC as :book_copies
+
+    SinhVien->>UI: 1. chonSachTuDanhSach(bookId)
+    UI->>CTRL: 2. getThongTinTinhTrang(bookId)
+    CTRL->>B: 3. findById(bookId)
+    B-->>CTRL: 4. return thongTinSach(title, isbn, availableCopies, totalCopies)
+    alt Sách không tồn tại
+        CTRL-->>UI: 4a. return loi("Không tìm thấy thông tin sách")
+        UI-->>SinhVien: 4b. hienThiThongBaoLoi()
+    end
+    CTRL->>BC: 5. findByBookId(bookId)
+    BC-->>CTRL: 6. return danhSachBanSach(barcode, status)
+    CTRL-->>UI: 7. return thongTinSach, soLuongConLai, danhSachBanSach
+    UI-->>SinhVien: 8. hienThiTinhTrang(availableCopies, danhSachBanSach)
+    alt Còn sách có sẵn
+        UI-->>SinhVien: 9a. hienThiNhan("Có thể mượn ngay")
+    else Hết sách
+        UI-->>SinhVien: 9b. hienThiThongBao("Hiện không có sách để mượn")
+    end
+```
+
+*Hình 2.12. Biểu đồ trình tự – Xem tình trạng sách*
+
+---
+
+#### 2.3.5.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class TinhTrangSachUI {
+        <<boundary>>
+        +chonSachTuDanhSach(bookId)
+        +hienThiTinhTrang(availableCopies, danhSachBanSach)
+        +hienThiThongBaoLoi()
+        +hienThiNhan(message)
+    }
+    class TinhTrangSachController {
+        <<control>>
+        +getThongTinTinhTrang(bookId)
+        +getSoLuongConLai(bookId)
+        +getTrangThaiTungBan(bookId)
+    }
+    class books {
+        <<entity>>
+        +id : INT
+        +title : VARCHAR
+        +isbn : VARCHAR
+        +available_copies : INT
+        +total_copies : INT
+        +findById(bookId)
+        +getAvailableCopies()
+        +getTotalCopies()
+        +getTitle()
+    }
+    class book_copies {
+        <<entity>>
+        +id : INT
+        +barcode : VARCHAR
+        +status : VARCHAR
+        +book_id : INT
+        +findByBookId(bookId)
+        +getStatus()
+        +getBarcode()
+    }
+    TinhTrangSachUI "1" -- "1" TinhTrangSachController
+    TinhTrangSachController "1" -- "1" books
+    TinhTrangSachController "1" -- "n" book_copies
+    books "1" -- "n" book_copies
+```
+
+*Hình 2.13. Biểu đồ lớp phân tích – Xem tình trạng sách*
+
+---
+
+### 2.3.6. Phân tích use case Xem sách đang mượn
+
+#### 2.3.6.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    participant HT as :HệThống
+    participant CTRL as :XemSachMuonController
+    participant BR as :borrow_records
+    participant P as :patrons
+    participant BC as :book_copies
+    participant B as :books
+
+    Note over HT: Kích hoạt sau khi mượn sách thành công
+    HT->>CTRL: 1. guiEmailXacNhan(patronId, recordId)
+    CTRL->>BR: 2. findById(recordId)
+    BR-->>CTRL: 3. return thongTinGiaoDich(bookCopyId, borrowDate, dueDate)
+    CTRL->>BC: 4. findById(bookCopyId)
+    BC-->>CTRL: 5. return bookId
+    CTRL->>B: 6. findById(bookId)
+    B-->>CTRL: 7. return title
+    CTRL->>P: 8. findById(patronId)
+    P-->>CTRL: 9. return email, fullName
+    CTRL->>HT: 10. guiEmail(email, title, borrowDate, dueDate)
+    Note over HT: Email xác nhận mượn gửi đến sinh viên
+
+    Note over HT: Chạy tự động mỗi ngày lúc 00:00
+    HT->>CTRL: 11. kiemTraSapDenHan()
+    CTRL->>BR: 12. getDanhSachSapHan(ngayHienTai, 3)
+    BR-->>CTRL: 13. return danhSachSapHan
+    loop Mỗi giao dịch sắp hạn
+        CTRL->>P: 14. findById(patronId)
+        P-->>CTRL: 15. return email
+        CTRL->>HT: 16. guiEmailNhacHan(email, title, dueDate, soNgayConLai)
+        CTRL->>BR: 17. capNhatReminderSent(recordId, 1)
+    end
+```
+
+*Hình 2.14. Biểu đồ trình tự – Xem sách đang mượn*
+
+---
+
+#### 2.3.6.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class XemSachMuonController {
+        <<control>>
+        +guiEmailXacNhan(patronId, recordId)
+        +kiemTraSapDenHan()
+        +guiEmailNhacHan(email, title, dueDate, soNgayConLai)
+        +capNhatReminderSent(recordId, value)
+    }
+    class borrow_records {
+        <<entity>>
+        +id : INT
+        +borrow_date : DATE
+        +due_date : DATE
+        +fine_amount : DECIMAL
+        +reminder_sent : TINYINT
+        +status : VARCHAR
+        +book_copy_id : INT
+        +patron_id : INT
+        +findById(recordId)
+        +getDanhSachSapHan(ngayHienTai, soNgay)
+        +capNhatReminderSent(id, value)
+        +getDueDate()
+        +getBookCopyId()
+        +getPatronId()
+    }
+    class patrons {
+        <<entity>>
+        +id : INT
+        +email : VARCHAR
+        +full_name : VARCHAR
+        +findById(id)
+        +getEmail()
+        +getFullName()
+    }
+    class book_copies {
+        <<entity>>
+        +id : INT
+        +book_id : INT
+        +findById(id)
+        +getBookId()
+    }
+    class books {
+        <<entity>>
+        +id : INT
+        +title : VARCHAR
+        +findById(id)
+        +getTitle()
+    }
+    XemSachMuonController "1" -- "n" borrow_records
+    XemSachMuonController "1" -- "1" patrons
+    XemSachMuonController "1" -- "1" book_copies
+    XemSachMuonController "1" -- "1" books
+    borrow_records "n" -- "1" patrons
+    borrow_records "1" -- "1" book_copies
+    book_copies "n" -- "1" books
+```
+
+*Hình 2.15. Biểu đồ lớp phân tích – Xem sách đang mượn*
+
+---
+
+### 2.3.7. Phân tích use case Nhận trả sách
+
+#### 2.3.7.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    actor ThuThu as :ThuThu
+    participant UI as :TraSachUI
+    participant CTRL as :TraSachController
+    participant BC as :book_copies
+    participant BR as :borrow_records
+    participant B as :books
+
+    ThuThu->>UI: 1. clickTraSach()
+    UI-->>ThuThu: 2. hienThiGiaoDienQuetBarcode()
+    ThuThu->>UI: 3. quetBarcodeSach(barcode)
+    UI->>CTRL: 4. timGiaoDichMuon(barcode)
+    CTRL->>BC: 5. findByBarcode(barcode)
+    BC-->>CTRL: 6. return bookCopyId, bookId
+    CTRL->>BR: 7. findActiveByBookCopyId(bookCopyId)
+    BR-->>CTRL: 8. return thongTinGiaoDich(patronId, borrowDate, dueDate)
+    alt Mã sách không tồn tại
+        CTRL-->>UI: 8a. return loi("Không tìm thấy thông tin sách")
+        UI-->>ThuThu: 8b. hienThiThongBaoLoi()
+    else Sách chưa từng được mượn
+        CTRL-->>UI: 8c. return loi("Sách không có giao dịch mượn")
+        UI-->>ThuThu: 8d. hienThiThongBaoLoi()
+    end
+    CTRL->>CTRL: 9. tinhTienPhat(dueDate, returnDate)
+    Note right of CTRL: fineAmount = soNgayQuaHan × mucPhi
+    CTRL-->>UI: 10. return thongTinTraSach(tenSach, tenDocGia, soNgayQuaHan, fineAmount)
+    UI-->>ThuThu: 11. hienThiThongTinTraVaTienPhat()
+    ThuThu->>UI: 12. xacNhanNhanSach()
+    UI->>CTRL: 13. ghiNhanTraSach(recordId, returnDate, fineAmount)
+    CTRL->>BR: 14. capNhatTraSach(recordId, returnDate, fineAmount, "returned")
+    BR-->>CTRL: 15. return ketQua
+    CTRL->>BC: 16. setStatus(bookCopyId, "available")
+    BC-->>CTRL: 17. return ketQua
+    CTRL->>B: 18. tangAvailableCopies(bookId)
+    B-->>CTRL: 19. return ketQua
+    CTRL-->>UI: 20. return "Trả sách thành công"
+    UI-->>ThuThu: 21. hienThiThongBaoThanhCong()
+```
+
+*Hình 2.16. Biểu đồ trình tự – Nhận trả sách*
+
+---
+
+#### 2.3.7.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class TraSachUI {
+        <<boundary>>
+        +clickTraSach()
+        +hienThiGiaoDienQuetBarcode()
+        +quetBarcodeSach(barcode)
+        +hienThiThongTinTraVaTienPhat()
+        +xacNhanNhanSach()
+        +hienThiThongBaoLoi()
+        +hienThiThongBaoThanhCong()
+    }
+    class TraSachController {
+        <<control>>
+        +timGiaoDichMuon(barcode)
+        +tinhTienPhat(dueDate, returnDate)
+        +ghiNhanTraSach(recordId, returnDate, fineAmount)
+        +capNhatTrangThaiSach(bookCopyId, status)
+        +tangAvailableCopies(bookId)
+    }
+    class book_copies {
+        <<entity>>
+        +id : INT
+        +barcode : VARCHAR
+        +status : VARCHAR
+        +book_id : INT
+        +findByBarcode(barcode)
+        +setStatus(id, status)
+        +getBookId()
+    }
+    class borrow_records {
+        <<entity>>
+        +id : INT
+        +borrow_date : DATE
+        +due_date : DATE
+        +return_date : DATE
+        +fine_amount : DECIMAL
+        +status : VARCHAR
+        +book_copy_id : INT
+        +patron_id : INT
+        +librarian_id : INT
+        +findActiveByBookCopyId(bookCopyId)
+        +capNhatTraSach(id, returnDate, fineAmount, status)
+        +getDueDate()
+        +getPatronId()
+    }
+    class books {
+        <<entity>>
+        +id : INT
+        +available_copies : INT
+        +total_copies : INT
+        +tangAvailableCopies(bookId)
+        +getAvailableCopies()
+    }
+    TraSachUI "1" -- "1" TraSachController
+    TraSachController "1" -- "1" book_copies
+    TraSachController "1" -- "1" borrow_records
+    TraSachController "1" -- "1" books
+    borrow_records "1" -- "1" book_copies
+    book_copies "n" -- "1" books
+```
+
+*Hình 2.17. Biểu đồ lớp phân tích – Nhận trả sách*
+
+---
+
+### 2.3.8. Phân tích use case Tự động tính tiền phạt
+
+#### 2.3.8.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    participant HT as :HệThống
+    participant CTRL as :TienPhatController
+    participant BR as :borrow_records
+    participant P as :patrons
+
+    Note over HT: Kích hoạt khi nhận trả sách hoặc kiểm tra định kỳ
+    HT->>CTRL: 1. kichHoatTinhTienPhat(recordId)
+    CTRL->>BR: 2. findById(recordId)
+    BR-->>CTRL: 3. return thongTinGiaoDich(dueDate, returnDate, status, patronId)
+    CTRL->>CTRL: 4. layNgayKiemTra()
+    Note right of CTRL: returnDate nếu đã trả, ngayHienTai nếu chưa
+    CTRL->>CTRL: 5. tinhSoNgayQuaHan(dueDate, ngayKiemTra)
+    alt Trả đúng hạn hoặc trước hạn
+        CTRL-->>HT: 5a. return fineAmount = 0
+        HT-->>HT: 5b. hienThi("Không phát sinh tiền phạt")
+    else Quá hạn
+        CTRL->>CTRL: 6. tinhTienPhat(soNgayQuaHan, mucPhiPerNgay)
+        Note right of CTRL: fineAmount = soNgayQuaHan × mucPhiPerNgay
+        CTRL->>BR: 7. capNhatFineAmount(recordId, fineAmount)
+        BR-->>CTRL: 8. return ketQua
+        CTRL->>P: 9. findById(patronId)
+        P-->>CTRL: 10. return thongTinDocGia
+        CTRL-->>HT: 11. return fineAmount, soNgayQuaHan
+        HT-->>HT: 12. hienThiTienPhat(soNgayQuaHan, mucPhiPerNgay, tongTienPhat)
+    end
+```
+
+*Hình 2.18. Biểu đồ trình tự – Tự động tính tiền phạt*
+
+---
+
+#### 2.3.8.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class TienPhatController {
+        <<control>>
+        +kichHoatTinhTienPhat(recordId)
+        +layNgayKiemTra()
+        +tinhSoNgayQuaHan(dueDate, ngayKiemTra)
+        +tinhTienPhat(soNgayQuaHan, mucPhiPerNgay)
+        +capNhatFineAmount(recordId, fineAmount)
+    }
+    class borrow_records {
+        <<entity>>
+        +id : INT
+        +borrow_date : DATE
+        +due_date : DATE
+        +return_date : DATE
+        +fine_amount : DECIMAL
+        +status : VARCHAR
+        +patron_id : INT
+        +book_copy_id : INT
+        +findById(recordId)
+        +capNhatFineAmount(id, fineAmount)
+        +getDueDate()
+        +getReturnDate()
+        +getFineAmount()
+        +getPatronId()
+    }
+    class patrons {
+        <<entity>>
+        +id : INT
+        +email : VARCHAR
+        +full_name : VARCHAR
+        +findById(id)
+        +getEmail()
+        +getFullName()
+    }
+    TienPhatController "1" -- "n" borrow_records
+    TienPhatController "1" -- "1" patrons
+    borrow_records "n" -- "1" patrons
+```
+
+*Hình 2.19. Biểu đồ lớp phân tích – Tự động tính tiền phạt*
+
+---
+
+### 2.3.9. Phân tích use case Tự động thông báo nhắc hạn trả sách
+
+#### 2.3.9.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    participant HT as :HệThống
+    participant CTRL as :ThongBaoController
+    participant BR as :borrow_records
+    participant P as :patrons
+    participant BC as :book_copies
+    participant B as :books
+
+    Note over HT: Chạy tự động mỗi ngày lúc 00:00
+    HT->>CTRL: 1. chayKiemTraDinhKy()
+    CTRL->>BR: 2. getDanhSachChuaHoanTat()
+    BR-->>CTRL: 3. return danhSachGiaoDich
+    CTRL->>CTRL: 4. locSachSapHan(danhSachGiaoDich, 1-3 ngay)
+    CTRL->>CTRL: 5. locSachQuaHan(danhSachGiaoDich)
+
+    loop Mỗi giao dịch sắp đến hạn
+        CTRL->>P: 6. findById(patronId)
+        P-->>CTRL: 7. return email, fullName
+        CTRL->>BC: 8. findById(bookCopyId)
+        BC-->>CTRL: 9. return bookId
+        CTRL->>B: 10. findById(bookId)
+        B-->>CTRL: 11. return title
+        CTRL->>CTRL: 12. taoNoiDungEmail(title, dueDate, soNgayConLai)
+        CTRL->>HT: 13. guiEmailNhacHan(email, noiDung)
+        alt Gửi email thành công
+            CTRL->>BR: 14. capNhatReminderSent(recordId, 1)
+        else Gửi email thất bại
+            CTRL->>CTRL: 14a. ghiLogLoi(recordId)
+        end
+    end
+
+    loop Mỗi giao dịch đã quá hạn
+        CTRL->>P: 15. findById(patronId)
+        P-->>CTRL: 16. return email
+        CTRL->>CTRL: 17. tinhTienPhat(dueDate, ngayHienTai)
+        CTRL->>HT: 18. guiEmailQuaHan(email, title, soNgayQuaHan, fineAmount)
+    end
+```
+
+*Hình 2.20. Biểu đồ trình tự – Tự động thông báo nhắc hạn trả sách*
+
+---
+
+#### 2.3.9.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class ThongBaoController {
+        <<control>>
+        +chayKiemTraDinhKy()
+        +locSachSapHan(danhSachGiaoDich, soNgay)
+        +locSachQuaHan(danhSachGiaoDich)
+        +taoNoiDungEmail(title, dueDate, soNgayConLai)
+        +guiEmailNhacHan(email, noiDung)
+        +guiEmailQuaHan(email, title, soNgayQuaHan, fineAmount)
+        +tinhTienPhat(dueDate, ngayHienTai)
+        +ghiLogLoi(recordId)
+    }
+    class borrow_records {
+        <<entity>>
+        +id : INT
+        +due_date : DATE
+        +return_date : DATE
+        +fine_amount : DECIMAL
+        +reminder_sent : TINYINT
+        +status : VARCHAR
+        +book_copy_id : INT
+        +patron_id : INT
+        +getDanhSachChuaHoanTat()
+        +capNhatReminderSent(id, value)
+        +getDueDate()
+        +getReminderSent()
+        +getPatronId()
+        +getBookCopyId()
+    }
+    class patrons {
+        <<entity>>
+        +id : INT
+        +email : VARCHAR
+        +full_name : VARCHAR
+        +findById(id)
+        +getEmail()
+        +getFullName()
+    }
+    class book_copies {
+        <<entity>>
+        +id : INT
+        +book_id : INT
+        +findById(id)
+        +getBookId()
+    }
+    class books {
+        <<entity>>
+        +id : INT
+        +title : VARCHAR
+        +findById(id)
+        +getTitle()
+    }
+    ThongBaoController "1" -- "n" borrow_records
+    ThongBaoController "1" -- "1" patrons
+    ThongBaoController "1" -- "1" book_copies
+    ThongBaoController "1" -- "1" books
+    borrow_records "n" -- "1" patrons
+    borrow_records "1" -- "1" book_copies
+    book_copies "n" -- "1" books
+```
+
+*Hình 2.21. Biểu đồ lớp phân tích – Tự động thông báo nhắc hạn trả sách*
+
+---
+
+### 2.3.10. Phân tích use case OCR – Dữ liệu số
+
+#### 2.3.10.1. Biểu đồ trình tự
+
+```mermaid
+sequenceDiagram
+    actor ThuThu as :ThuThu
+    participant UI as :OCRUI
+    participant CTRL as :OCRController
+    participant DB as :books
+
+    ThuThu->>UI: 1. clickQuetTaiLieuOCR()
+    UI-->>ThuThu: 2. hienThiGiaoDienTaiLen()
+    ThuThu->>UI: 3. taiLenFile(file: PNG/JPG/PDF)
+    UI->>CTRL: 4. kiemTraDinhDangFile(file)
+    alt Định dạng không hỗ trợ
+        CTRL-->>UI: 4a. return loi("Định dạng file không được hỗ trợ")
+        UI-->>ThuThu: 4b. hienThiThongBaoLoi()
+    end
+    CTRL->>CTRL: 5. tienXuLyAnh(file)
+    Note right of CTRL: Lọc nhiễu, tăng độ tương phản
+    CTRL->>CTRL: 6. thucHienOCR(fileXuLy)
+    Note right of CTRL: Nhận dạng ký tự quang học
+    CTRL->>CTRL: 7. trichXuatDuLieu(ketQuaOCR)
+    Note right of CTRL: Trích xuất: isbn, title, năm XB, nội dung
+    alt Ảnh mờ, không nhận dạng được
+        CTRL-->>UI: 7a. return loi("Không thể nhận dạng. Vui lòng tải ảnh rõ nét hơn")
+        UI-->>ThuThu: 7b. hienThiThongBaoLoi()
+    end
+    CTRL-->>UI: 8. return duLieuTrichXuat(isbn, title, year, fullText)
+    UI-->>ThuThu: 9. hienThiKetQuaVaChoPhepChinhSua()
+    ThuThu->>UI: 10. kiemTraVaXacNhanDuLieu()
+    UI->>CTRL: 11. luuDuLieuOCR(isbn, title, year, fullText)
+    CTRL->>DB: 12. findByIsbn(isbn)
+    DB-->>CTRL: 13. return bookId
+    CTRL->>DB: 14. capNhatFullText(bookId, fullText)
+    DB-->>CTRL: 15. return ketQua
+    CTRL-->>UI: 16. return "Trích xuất và lưu dữ liệu thành công"
+    UI-->>ThuThu: 17. hienThiThongBaoThanhCong()
+```
+
+*Hình 2.22. Biểu đồ trình tự – OCR – Dữ liệu số*
+
+---
+
+#### 2.3.10.2. Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    direction LR
+    class OCRUI {
+        <<boundary>>
+        +clickQuetTaiLieuOCR()
+        +hienThiGiaoDienTaiLen()
+        +taiLenFile(file)
+        +hienThiKetQuaVaChoPhepChinhSua()
+        +kiemTraVaXacNhanDuLieu()
+        +hienThiThongBaoLoi()
+        +hienThiThongBaoThanhCong()
+    }
+    class OCRController {
+        <<control>>
+        +kiemTraDinhDangFile(file)
+        +tienXuLyAnh(file)
+        +thucHienOCR(fileXuLy)
+        +trichXuatDuLieu(ketQuaOCR)
+        +luuDuLieuOCR(isbn, title, year, fullText)
+        +capNhatFullText(bookId, fullText)
+    }
+    class books {
+        <<entity>>
+        +id : INT
+        +title : VARCHAR
+        +isbn : VARCHAR
+        +publication_year : INT
+        +full_text : TEXT
+        +findByIsbn(isbn)
+        +capNhatFullText(id, fullText)
+        +setTitle()
+        +setIsbn()
+        +setPublicationYear()
+        +getFullText()
+        +getId()
+    }
+    OCRUI "1" -- "1" OCRController
+    OCRController "1" -- "1" books
+```
+
+*Hình 2.23. Biểu đồ lớp phân tích – OCR – Dữ liệu số*
