@@ -14,13 +14,48 @@ export interface Book {
 }
 
 export interface User {
-  id: string;
-  name: string;
+  _id: number;
+  username: string;
   email: string;
-  role: "librarian" | "user";
-  studentId?: string;
-  avatar?: string;
-  borrowedBooks: BorrowRecord[];
+  full_name: string;
+  account_locked: boolean;
+    role: "LIBRARIAN" | "USER";
+}
+
+//auth, login
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthenticationResponse {
+  access_token: string;
+  refresh_token: string;
+  user: User;
+}
+
+export interface AuthState {
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isAuthenticated: boolean;
+}
+//phantrang
+export interface ApiResponse<T> {
+  statusCode: number;
+  message: string;
+  error?: string;
+  data: T;
+}
+
+export interface ApiPagination<T> {
+  meta: {
+    current: number;
+    pageSize: number;
+    pages: number;
+    total: number;
+  };
+  result: T[];
 }
 
 export interface BorrowRecord {
@@ -35,12 +70,6 @@ export interface BorrowRecord {
   userName?: string;
 }
 
-export type AuthState = {
-  user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-};
-
 export interface Fine {
   id: string;
   userId: string;
@@ -51,3 +80,4 @@ export interface Fine {
   totalFine: number;
   paid: boolean;
 }
+
