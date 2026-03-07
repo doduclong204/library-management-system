@@ -30,6 +30,9 @@ public class Librarian {
     @Column(nullable = false)
     private String fullName;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean accountLocked = false;
+
     @OneToMany(mappedBy = "librarian")
     private List<BorrowRecord> borrowRecords;
 }
