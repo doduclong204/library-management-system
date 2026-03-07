@@ -1,6 +1,7 @@
 package com.campuslink.library.controller;
 
 import com.campuslink.library.dto.request.auth.LoginRequest;
+import com.campuslink.library.dto.response.api.ApiResponse;
 import com.campuslink.library.dto.response.auth.AuthenticationResponse;
 import com.campuslink.library.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,13 +21,23 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthenticationResponse> login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> login(@Valid @RequestBody LoginRequest request) {
+        ResponseEntity<AuthenticationResponse> response = authService.login(request);
+        return ResponseEntity.ok()
+                .headers(response.getHeaders())
+                .body(ApiResponse.<AuthenticationResponse>builder()
+                        .data(response.getBody())
+                        .build());
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthenticationResponse> refresh(HttpServletRequest request) {
-        return authService.refreshToken(request);
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> refresh(HttpServletRequest request) {
+        ResponseEntity<AuthenticationResponse> response = authService.refreshToken(request);
+        return ResponseEntity.ok()
+                .headers(response.getHeaders())
+                .body(ApiResponse.<AuthenticationResponse>builder()
+                        .data(response.getBody())
+                        .build());
     }
 
     @PostMapping("/logout")

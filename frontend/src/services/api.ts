@@ -1,71 +1,91 @@
-import axios from "axios";
+import axios, {
+  type AxiosInstance,
+  type AxiosError,
+  type InternalAxiosRequestConfig,
+} from "axios";
+import { getAccessToken, getRefreshToken, authActions } from "@/store/authStore";
+import type { ApiResponse, AuthenticationResponse } from "@/types";
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080/api",
+const api: AxiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1",
+  withCredentials: true,
   headers: { "Content-Type": "application/json" },
+  timeout: 15_000,
 });
-
-// Attach JWT token if present
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// Response error handling
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-    }
-    return Promise.reject(err);
-  }
-);
-
-// Auth
-export const loginUser = (data: { email: string; password: string }) =>
-  api.post("/auth/login", data);
-export const registerUser = (data: { name: string; email: string; studentId: string; password: string }) =>
-  api.post("/auth/register", data);
-
-// Books
-export const getBooks = (params?: Record<string, string>) =>
-  api.get("/books", { params });
-export const getBookById = (id: string) => api.get(`/books/${id}`);
-export const createBook = (data: Record<string, unknown>) => api.post("/books", data);
-export const updateBook = (id: string, data: Record<string, unknown>) => api.put(`/books/${id}`, data);
-export const deleteBook = (id: string) => api.delete(`/books/${id}`);
-
-// Borrow / Return
-export const borrowBook = (data: { bookId: string; userId: string; dueDate: string }) =>
-  api.post("/borrow", data);
-export const returnBook = (data: { borrowId: string; returnDate: string }) =>
-  api.post("/return", data);
-export const getMyBorrows = () => api.get("/borrows/my");
-export const getAllBorrows = () => api.get("/borrows");
-
-// Users
-export const getCurrentUser = () => api.get("/users/me");
-export const updateCurrentUser = (data: { name?: string; avatar?: string }) =>
-  api.put("/users/me", data);
-export const getUsers = () => api.get("/users");
-export const getUserById = (id: string) => api.get(`/users/${id}`);
-
-// OCR
-export const uploadOCR = (file: File) => {
-  const form = new FormData();
-  form.append("file", file);
-  return api.post("/ocr", form, { headers: { "Content-Type": "multipart/form-data" } });
-};
-
-// Recommendations
-export const getRecommendations = (userId: string) =>
-  api.get(`/recommendations/${userId}`);
-
-// Fines
-export const getFines = () => api.get("/fines");
-export const payFine = (fineId: string) => api.post(`/fines/${fineId}/pay`);
 
 export default api;
+
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = getAccessToken();
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+let isRefreshing = false;
+let pendingQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}> = [];
+
+const drainQueue = (token: string | null, error: unknown = null) => {
+  pendingQueue.forEach((p) => (token ? p.resolve(token) : p.reject(error)));
+  pendingQueue = [];
+};
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error: AxiosError) => {
+    const original = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
+
+    if (error.response?.status !== 401 || original._retry) {
+      return Promise.reject(error);
+    }
+
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      authActions.logout();
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        pendingQueue.push({ resolve, reject });
+      }).then((token) => {
+        original.headers["Authorization"] = `Bearer ${token}`;
+        return api(original);
+      });
+    }
+
+    original._retry = true;
+    isRefreshing = true;
+
+    try {
+      const { data } = await axios.post<ApiResponse<AuthenticationResponse>>(
+        `${import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1"}/auth/refresh`,
+        { refresh_token: refreshToken },
+        { withCredentials: true }
+      );
+
+      const { access_token, refresh_token, user } = data.data;
+      authActions.setAuth(user, access_token, refresh_token);
+
+      drainQueue(access_token);
+      original.headers["Authorization"] = `Bearer ${access_token}`;
+      return api(original);
+    } catch (refreshErr) {
+      drainQueue(null, refreshErr);
+      authActions.logout();
+      window.location.href = "/login";
+      return Promise.reject(refreshErr);
+    } finally {
+      isRefreshing = false;
+    }
+  }
+);
