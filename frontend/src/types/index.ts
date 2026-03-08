@@ -58,18 +58,6 @@ export interface ApiPagination<T> {
   result: T[];
 }
 
-export interface BorrowRecord {
-  id: string;
-  bookId: string;
-  bookTitle: string;
-  borrowDate: string;
-  dueDate: string;
-  returnDate?: string;
-  fine?: number;
-  userId?: string;
-  userName?: string;
-}
-
 export interface Fine {
   id: string;
   userId: string;
@@ -79,5 +67,22 @@ export interface Fine {
   finePerDay: number;
   totalFine: number;
   paid: boolean;
+}
+
+//borrow
+export type BorrowStatus = "borrowed" | "returned" | "overdue" | "lost";
+
+export interface BorrowRecord {
+  id: string;
+  bookId?: string;
+  bookTitle: string;
+  borrowDate: string;
+  dueDate: string;
+  returnDate?: string;
+  fine?: number;
+  userId?: string;
+  userName?: string;
+  email?: string;
+  status?: BorrowStatus;
 }
 
