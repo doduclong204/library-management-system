@@ -2,22 +2,24 @@ package com.campuslink.library.mapper;
 
 import com.campuslink.library.dto.response.BorrowResponse;
 import com.campuslink.library.entity.BorrowRecord;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-public class BorrowMapper {
+@Mapper(componentModel = "spring")
+public interface BorrowMapper {
 
-    public static BorrowResponse toResponse(BorrowRecord record) {
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "borrowDate", source = "borrowDate")
+    @Mapping(target = "dueDate", source = "dueDate")
+    @Mapping(target = "returnDate", source = "returnDate")
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "fineAmount", source = "fineAmount")
 
-        return BorrowResponse.builder()
-                .borrowId(record.getId())
-                .patronName(record.getPatron().getFullName())
-                .patronEmail(record.getPatron().getEmail())
-                .bookCopyId(record.getBookCopy().getId())
-                .borrowDate(record.getBorrowDate())
-                .dueDate(record.getDueDate())
-                .status(record.getStatus().name())
-                .fineAmount(record.getFineAmount())
-                .build();
+    @Mapping(target = "patronName", source = "patron.fullName")
+    @Mapping(target = "email", source = "patron.email")
 
-    }
+    @Mapping(target = "bookTitle", source = "bookCopy.book.title")
+
+    BorrowResponse toBorrowResponse(BorrowRecord record);
 
 }

@@ -1,26 +1,33 @@
 package com.campuslink.library.dto.response;
 
-import lombok.Builder;
-import lombok.Data;
+import com.campuslink.library.enums.BorrowStatus;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@Data
+@Getter
+@Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class BorrowResponse {
 
-    private Integer borrowId;
+    private Integer id;
 
     private String patronName;
-    private String patronEmail;
 
-    private Integer bookCopyId;
+    private String email;
+
+    private String bookTitle;
 
     private LocalDate borrowDate;
+
     private LocalDate dueDate;
 
-    private String status;
+    private LocalDate returnDate;
+
+    private BorrowStatus status;
 
     private BigDecimal fineAmount;
 
