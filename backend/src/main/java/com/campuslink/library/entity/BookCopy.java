@@ -4,8 +4,6 @@ import com.campuslink.library.enums.BookStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.List;
-
 @Getter
 @Setter
 @Builder
@@ -19,17 +17,12 @@ public class BookCopy {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "book_id", nullable = false)
     private Book book;
 
-    @Column(unique = true, nullable = false)
-    private String barcode;
-
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) default 'available'")
+    @Column(nullable = false)
+    @Builder.Default
     private BookStatus status = BookStatus.available;
-
-    @OneToMany(mappedBy = "bookCopy")
-    private List<BorrowRecord> borrowRecords;
 }
