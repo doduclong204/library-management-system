@@ -32,7 +32,6 @@ public class BookServiceImpl implements BookService {
     private final AuthorRepository authorRepository;
     private final BookMapper bookMapper;
 
-    // ── GET /books (phân trang + tìm kiếm) ────────────────────────────
     @Override
     public ApiPagination<BookResponse> getBooks(int page, int size, String keyword, String genre) {
         // page từ client bắt đầu từ 1, Pageable bắt đầu từ 0
@@ -79,15 +78,16 @@ public class BookServiceImpl implements BookService {
         Book book = Book.builder()
                 .isbn(request.getIsbn())
                 .title(request.getTitle())
+                .imageUrl(request.getImageUrl())
                 .genre(request.getGenre())
                 .publicationYear(request.getPublicationYear())
                 .totalCopies(request.getTotalCopies())
-                .availableCopies(request.getTotalCopies()) // Mới tạo → available = total
+                .availableCopies(request.getTotalCopies())
                 .build();
 
         book = bookRepository.save(book);
 
-        // Gán tác giả (ManyToMany — owner side là Author)
+
         if (request.getAuthorIds() != null && !request.getAuthorIds().isEmpty()) {
             List<Author> authors = authorRepository.findByIdIn(request.getAuthorIds());
             if (authors.size() != request.getAuthorIds().size()) {
@@ -107,7 +107,6 @@ public class BookServiceImpl implements BookService {
         return bookMapper.toResponse(book);
     }
 
-    // ── PUT /books/{id} ────────────────────────────────────────────────
     @Override
     @Transactional
     public BookResponse updateBook(Integer id, BookRequest request) {
@@ -122,6 +121,7 @@ public class BookServiceImpl implements BookService {
         // Cập nhật thông tin cơ bản
         book.setIsbn(request.getIsbn());
         book.setTitle(request.getTitle());
+        book.setImageUrl(request.getImageUrl());
         book.setGenre(request.getGenre());
         book.setPublicationYear(request.getPublicationYear());
 

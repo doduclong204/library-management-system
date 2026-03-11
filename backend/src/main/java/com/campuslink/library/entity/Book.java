@@ -27,6 +27,9 @@ public class Book {
     @Column(nullable = false)
     private String title;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
     private String genre;
 
     private Integer publicationYear;
