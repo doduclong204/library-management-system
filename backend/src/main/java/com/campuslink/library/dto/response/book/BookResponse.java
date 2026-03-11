@@ -18,6 +18,7 @@ public class BookResponse {
     Integer id;
     String isbn;
     String title;
+    String imageUrl;
     String genre;
 
     @JsonProperty("publication_year")

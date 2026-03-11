@@ -21,6 +21,7 @@ public class BookRequest {
 
     @NotBlank(message = "Tiêu đề không được để trống")
     String title;
+    String imageUrl;
 
     String genre;
 
