@@ -21,6 +21,9 @@ public class BookCopy {
     @JoinColumn(name = "book_id", nullable = false)
     private Book book;
 
+    @Column(unique = true, nullable = false)
+    private String barcode;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
