@@ -27,7 +27,7 @@ export interface User {
   email: string;
   full_name: string;
   account_locked: boolean;
-    role: "LIBRARIAN" | "USER";
+  role: "LIBRARIAN" | "USER";
 }
 
 //auth, login
@@ -48,6 +48,7 @@ export interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
 }
+
 //phantrang
 export interface ApiResponse<T> {
   statusCode: number;
@@ -94,3 +95,45 @@ export interface BorrowRecord {
   status?: BorrowStatus;
 }
 
+// return book
+export interface BookReturnSearchResponse {
+  borrowRecordId: number;
+  isbn: string;
+  bookTitle: string;
+  imageUrl?: string;
+  bookCopyId: number;
+  barcode: string;
+  patronName: string;
+  patronEmail: string;
+  studentId: string;
+  borrowDate: string;
+  dueDate: string;
+  isOverdue: boolean;
+  overdueDays: number;
+  estimatedFine: number;
+}
+
+export interface ReturnBookResponse {
+  borrowRecordId: number;
+  isbn: string;
+  bookTitle: string;
+  bookCopyId: number;
+  barcode: string;
+  patronName: string;
+  patronEmail: string;
+  studentId: string;
+  borrowDate: string;
+  dueDate: string;
+  returnDate: string;
+  overdueDays: number;
+  fineAmount: number;
+  hasFinePending: boolean;
+  message: string;
+}
+
+export interface ReturnBookRequest {
+  isbn?: string;
+  title?: string;
+  barcode?: string;
+  returnDate: string;
+}

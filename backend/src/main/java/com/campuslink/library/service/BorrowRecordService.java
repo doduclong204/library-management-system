@@ -46,7 +46,7 @@ public class BorrowRecordService {
         List<BorrowRecord> records = borrowRecordRepository.findAll(buildSearchSpec(isbn, title, barcode));
 
         if (records.isEmpty()) {
-            throw new AppException(ErrorCode.BORROW_NOT_FOUND);
+            return List.of();
         }
 
         return records.stream().map(record -> {

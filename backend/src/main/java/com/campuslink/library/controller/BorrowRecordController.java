@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/borrow-records")
+@RequestMapping("/borrow-records")
 @RequiredArgsConstructor
 public class BorrowRecordController {
 
