@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { bookApi } from "@/services/apiServices";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit, Search, Save, BookOpen, Loader2 } from "lucide-react";
+import { Plus, Trash2, Edit, Search, Save, BookOpen, Loader2, ImagePlus, X, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,8 @@ import type { Book, BookRequest } from "@/types";
 
 const GENRES = ["Classic", "Fantasy", "Dystopian", "Romance", "Science Fiction", "Fiction", "Non-Fiction", "Philosophy", "Satire"];
 
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+
 const EMPTY_FORM: BookRequest = {
   isbn: "",
   title: "",
@@ -31,25 +33,26 @@ const EMPTY_FORM: BookRequest = {
   publication_year: new Date().getFullYear(),
   total_copies: 1,
   author_ids: [],
+  image_url: "",
 };
 
 const BookManagement = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Bộ lọc
   const [keyword, setKeyword] = useState("");
   const [genreFilter, setGenreFilter] = useState("all");
   const [page, setPage] = useState(1);
 
-  // Dialog state
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deleteBook, setDeleteBook] = useState<Book | null>(null);
   const [form, setForm] = useState<BookRequest>(EMPTY_FORM);
-  const [authorInput, setAuthorInput] = useState(""); // nhập author_ids dạng "1,2,3"
+  const [authorInput, setAuthorInput] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
-  // ==================== QUERIES ====================
   const { data, isLoading } = useQuery({
     queryKey: ["books", page, keyword, genreFilter],
     queryFn: () =>
@@ -64,7 +67,6 @@ const BookManagement = () => {
   const books = data?.result ?? [];
   const meta = data?.meta;
 
-  // ==================== MUTATIONS ====================
   const createMutation = useMutation({
     mutationFn: bookApi.create,
     onSuccess: (res) => {
@@ -102,7 +104,47 @@ const BookManagement = () => {
     },
   });
 
-  // ==================== HANDLERS ====================
+  const uploadImage = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Lỗi", description: "Chỉ chấp nhận file ảnh.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Lỗi", description: "Ảnh không được vượt quá 10MB.", variant: "destructive" });
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${BASE_URL}/api/v1/upload/image`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      setForm(f => ({ ...f, image_url: json.url }));
+      toast({ title: "Upload thành công" });
+    } catch {
+      toast({ title: "Lỗi", description: "Upload ảnh thất bại.", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadImage(file);
+    e.target.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) uploadImage(file);
+  };
+
   const openAdd = useCallback(() => {
     setEditingId(null);
     setForm(EMPTY_FORM);
@@ -119,8 +161,9 @@ const BookManagement = () => {
       publication_year: book.publication_year,
       total_copies: book.total_copies,
       author_ids: [],
+      image_url: book.image_url ?? "",
     });
-    setAuthorInput(""); // author_ids không có trong response, để trống
+    setAuthorInput("");
     setFormOpen(true);
   }, []);
 
@@ -129,9 +172,7 @@ const BookManagement = () => {
       .split(",")
       .map(s => parseInt(s.trim()))
       .filter(n => !isNaN(n));
-
     const payload: BookRequest = { ...form, author_ids: authorIds };
-
     if (editingId !== null) {
       updateMutation.mutate({ id: editingId, data: payload });
     } else {
@@ -143,7 +184,6 @@ const BookManagement = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="page-header flex items-center gap-2">
@@ -158,7 +198,6 @@ const BookManagement = () => {
         </Button>
       </div>
 
-      {/* Search & Filter */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[240px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -176,16 +215,14 @@ const BookManagement = () => {
             {GENRES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
           </SelectContent>
         </Select>
-        {meta && (
-          <span className="text-sm text-muted-foreground ml-auto">{meta.total} kết quả</span>
-        )}
+        {meta && <span className="text-sm text-muted-foreground ml-auto">{meta.total} kết quả</span>}
       </div>
 
-      {/* Table */}
       <div className="glass-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-14">Bìa</TableHead>
               <TableHead>Tiêu đề</TableHead>
               <TableHead className="hidden sm:table-cell">Tác giả</TableHead>
               <TableHead className="hidden md:table-cell">ISBN</TableHead>
@@ -197,13 +234,13 @@ const BookManagement = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10">
+                <TableCell colSpan={7} className="text-center py-10">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : books.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
                   Không tìm thấy sách.
                 </TableCell>
               </TableRow>
@@ -211,11 +248,25 @@ const BookManagement = () => {
               books.map(book => (
                 <TableRow key={book.id}>
                   <TableCell>
+                    {book.image_url ? (
+                      <img
+                        src={`${BASE_URL}${book.image_url}`}
+                        alt={book.title}
+                        className="w-10 h-14 object-cover rounded shadow-sm"
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
+                        <BookOpen className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <p className="font-medium text-sm">{book.title}</p>
-                    <p className="text-xs text-muted-foreground sm:hidden">{book.authors.join(", ")}</p>
+                    <p className="text-xs text-muted-foreground sm:hidden">{book.authors?.join(", ")}</p>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                    {book.authors.join(", ") || "—"}
+                    {book.authors?.join(", ") || "—"}
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground font-mono text-xs">
                     {book.isbn}
@@ -233,13 +284,12 @@ const BookManagement = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(book)} title="Sửa">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(book)}>
                         <Edit className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost" size="icon"
                         onClick={() => setDeleteBook(book)}
-                        title="Xóa"
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -253,31 +303,87 @@ const BookManagement = () => {
         </Table>
       </div>
 
-      {/* Pagination */}
       {meta && meta.pages > 1 && (
         <div className="flex justify-center gap-2">
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
             Trước
           </Button>
-          <span className="text-sm flex items-center px-2">
-            Trang {meta.current} / {meta.pages}
-          </span>
+          <span className="text-sm flex items-center px-2">Trang {meta.current} / {meta.pages}</span>
           <Button variant="outline" size="sm" disabled={page >= meta.pages} onClick={() => setPage(p => p + 1)}>
             Sau
           </Button>
         </div>
       )}
 
-      {/* Add/Edit Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingId ? "Chỉnh sửa sách" : "Thêm sách mới"}</DialogTitle>
             <DialogDescription>
               {editingId ? "Cập nhật thông tin sách." : "Điền thông tin sách để thêm vào thư viện."}
             </DialogDescription>
           </DialogHeader>
+
           <div className="grid sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <Label>Ảnh bìa</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              {form.image_url ? (
+                <div className="relative mt-1.5 inline-block">
+                  <img
+                    src={`${BASE_URL}${form.image_url}`}
+                    alt="preview"
+                    className="h-36 w-auto rounded-md border object-cover shadow-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, image_url: "" }))}
+                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center shadow"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-1 right-1 bg-black/60 text-white rounded px-1.5 py-0.5 text-xs flex items-center gap-1 hover:bg-black/80"
+                  >
+                    <Upload className="w-3 h-3" /> Đổi ảnh
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  className={`mt-1.5 flex flex-col items-center justify-center gap-2 h-28 rounded-md border-2 border-dashed cursor-pointer transition-colors
+                    ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/60 hover:bg-muted/40"}
+                    ${isUploading ? "pointer-events-none opacity-60" : ""}`}
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      <span className="text-xs text-muted-foreground">Đang upload...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ImagePlus className="w-6 h-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground text-center px-4">
+                        Kéo thả hoặc <span className="text-primary font-medium">click để chọn ảnh</span>
+                        <br />JPG, PNG, WEBP · tối đa 10MB
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="sm:col-span-2">
               <Label>Tiêu đề *</Label>
               <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="mt-1.5" />
@@ -321,9 +427,14 @@ const BookManagement = () => {
               />
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)} disabled={isSaving}>Hủy</Button>
-            <Button onClick={handleSave} disabled={!form.title || !form.isbn || isSaving} className="gap-2">
+            <Button
+              onClick={handleSave}
+              disabled={!form.title || !form.isbn || isSaving || isUploading}
+              className="gap-2"
+            >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {editingId ? "Cập nhật" : "Lưu sách"}
             </Button>
@@ -331,7 +442,6 @@ const BookManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm */}
       <AlertDialog open={!!deleteBook} onOpenChange={open => { if (!open) setDeleteBook(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
