@@ -21,6 +21,7 @@ public class BookRequest {
 
     @NotBlank(message = "Tiêu đề không được để trống")
     String title;
+    @JsonProperty("image_url")
     String imageUrl;
 
     String genre;

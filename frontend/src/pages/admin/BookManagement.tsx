@@ -21,6 +21,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import type { Book, BookRequest } from "@/types";
+import { getAccessToken } from "@/store/authStore";
 
 const GENRES = ["Classic", "Fantasy", "Dystopian", "Romance", "Science Fiction", "Fiction", "Non-Fiction", "Philosophy", "Satire"];
 
@@ -104,33 +105,36 @@ const BookManagement = () => {
     },
   });
 
-  const uploadImage = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Lỗi", description: "Chỉ chấp nhận file ảnh.", variant: "destructive" });
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Lỗi", description: "Ảnh không được vượt quá 10MB.", variant: "destructive" });
-      return;
-    }
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(`${BASE_URL}/api/v1/upload/image`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      setForm(f => ({ ...f, image_url: json.url }));
-      toast({ title: "Upload thành công" });
-    } catch {
-      toast({ title: "Lỗi", description: "Upload ảnh thất bại.", variant: "destructive" });
-    } finally {
-      setIsUploading(false);
-    }
-  };
+ const uploadImage = async (file: File) => {
+  if (!file.type.startsWith("image/")) {
+    toast({ title: "Lỗi", description: "Chỉ chấp nhận file ảnh.", variant: "destructive" });
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    toast({ title: "Lỗi", description: "Ảnh không được vượt quá 10MB.", variant: "destructive" });
+    return;
+  }
+  setIsUploading(true);
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${BASE_URL}/api/v1/upload/image`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getAccessToken()}`,
+      },
+      body: formData,
+    });
+    if (!res.ok) throw new Error();
+    const json = await res.json();
+    setForm(f => ({ ...f, image_url: json.url }));
+    toast({ title: "Upload thành công" });
+  } catch {
+    toast({ title: "Lỗi", description: "Upload ảnh thất bại.", variant: "destructive" });
+  } finally {
+    setIsUploading(false);
+  }
+};
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
