@@ -1,16 +1,24 @@
+//book
 export interface Book {
-  id: string;
-  title: string;
-  author: string;
+  id: number;
   isbn: string;
-  genre: string;
-  year: number;
-  available: boolean;
-  coverUrl?: string;
-  description?: string;
-  publisher?: string;
-  rating?: number;
-  quantity?: number;
+  title: string;
+  image_url?: string;
+  genre?: string;
+  publication_year?: number;
+  total_copies: number;
+  available_copies: number;
+  authors: string[];
+}
+
+export interface BookRequest {
+  isbn: string;
+  title: string;
+  image_url?: string;
+  genre?: string;
+  publication_year?: number;
+  total_copies: number;
+  author_ids: number[];
 }
 
 export interface User {

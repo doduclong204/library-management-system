@@ -1,20 +1,20 @@
 import api from "./api";
-import type { ApiResponse, ApiPagination, Book, BorrowRecord, Fine, User } from "@/types";
+import type { ApiResponse, ApiPagination, Book, BorrowRecord, Fine, User, BookRequest } from "@/types";
 
 export const bookApi = {
   getAll: (params?: Record<string, string | number>) =>
     api.get<ApiResponse<ApiPagination<Book>>>("/books", { params }),
 
-  getById: (id: string) =>
+  getById: (id: number) =>
     api.get<ApiResponse<Book>>(`/books/${id}`),
 
-  create: (data: Omit<Book, "id">) =>
+  create: (data: BookRequest) =>
     api.post<ApiResponse<Book>>("/books", data),
 
-  update: (id: string, data: Partial<Book>) =>
+  update: (id: number, data: BookRequest) =>
     api.put<ApiResponse<Book>>(`/books/${id}`, data),
 
-  delete: (id: string) =>
+  delete: (id: number) =>
     api.delete<ApiResponse<{ message: string }>>(`/books/${id}`),
 };
 
