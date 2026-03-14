@@ -1,6 +1,7 @@
 package com.campuslink.library.dto.response;
 
 import com.campuslink.library.enums.BorrowStatus;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ public class BorrowResponse {
 
     private Integer id;
 
+    @JsonProperty("userName")
     private String patronName;
 
     private String email;
@@ -29,6 +31,7 @@ public class BorrowResponse {
 
     private BorrowStatus status;
 
+    @JsonProperty("fine")
     private BigDecimal fineAmount;
 
 }
