@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { borrowRecordApi } from "@/services/borrowRecordService";
+import { borrowRecordApi, calculateFine } from "@/services/borrowRecordService";
 import type { BookReturnSearchResponse, ReturnBookResponse } from "@/types";
 import { format } from "date-fns";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -295,12 +295,17 @@ const ReturnBookPage = () => {
               </Badge>
             )}
           </div>
-          {selectedRecord.isOverdue && (
-            <div className="flex items-center gap-2 text-sm text-destructive font-medium">
-              <AlertTriangle className="w-4 h-4" />
-              Phạt tạm tính: {selectedRecord.estimatedFine.toLocaleString("vi-VN")}đ
-            </div>
-          )}
+          {selectedRecord && (() => {
+            const dueStr = String(selectedRecord.dueDate ?? "").slice(0, 10);
+            const retStr = format(returnDate, "yyyy-MM-dd");
+            const fine = calculateFine(dueStr, retStr);
+            return fine > 0 ? (
+              <div className="flex items-center gap-2 text-sm text-destructive font-medium">
+                <AlertTriangle className="w-4 h-4" />
+                Phạt (nếu trả ngày {format(returnDate, "dd/MM/yyyy")}): {fine.toLocaleString("vi-VN")}đ
+              </div>
+            ) : null;
+          })()}
         </div>
       )}
 
