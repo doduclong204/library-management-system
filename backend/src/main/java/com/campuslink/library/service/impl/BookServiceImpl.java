@@ -21,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -87,12 +89,8 @@ public class BookServiceImpl implements BookService {
 
         book = bookRepository.save(book);
 
-
-        if (request.getAuthorIds() != null && !request.getAuthorIds().isEmpty()) {
-            List<Author> authors = authorRepository.findByIdIn(request.getAuthorIds());
-            if (authors.size() != request.getAuthorIds().size()) {
-                throw new AppException(ErrorCode.AUTHOR_NOT_FOUND);
-            }
+        List<Author> authors = resolveAuthors(request);
+        if (!authors.isEmpty()) {
             for (Author author : authors) {
                 if (author.getBooks() == null) {
                     author.setBooks(new ArrayList<>());
@@ -137,37 +135,63 @@ public class BookServiceImpl implements BookService {
         book.setAvailableCopies(newAvailable);
 
         // Cập nhật tác giả
-        if (request.getAuthorIds() != null) {
-            // Xóa liên kết cũ (owner side là Author)
-            if (book.getAuthors() != null) {
-                for (Author oldAuthor : book.getAuthors()) {
-                    oldAuthor.getBooks().remove(book);
-                }
-                authorRepository.saveAll(book.getAuthors());
+        List<Author> newAuthors = resolveAuthors(request);
+        // Xóa liên kết cũ (owner side là Author)
+        if (book.getAuthors() != null) {
+            for (Author oldAuthor : book.getAuthors()) {
+                oldAuthor.getBooks().remove(book);
             }
-
-            // Thêm liên kết mới
-            if (!request.getAuthorIds().isEmpty()) {
-                List<Author> newAuthors = authorRepository.findByIdIn(request.getAuthorIds());
-                if (newAuthors.size() != request.getAuthorIds().size()) {
-                    throw new AppException(ErrorCode.AUTHOR_NOT_FOUND);
+            authorRepository.saveAll(book.getAuthors());
+        }
+        // Thêm liên kết mới
+        if (!newAuthors.isEmpty()) {
+            for (Author author : newAuthors) {
+                if (author.getBooks() == null) {
+                    author.setBooks(new ArrayList<>());
                 }
-                for (Author author : newAuthors) {
-                    if (author.getBooks() == null) {
-                        author.setBooks(new ArrayList<>());
-                    }
-                    author.getBooks().add(book);
-                }
-                authorRepository.saveAll(newAuthors);
-                book.setAuthors(newAuthors);
-            } else {
-                book.setAuthors(new ArrayList<>());
+                author.getBooks().add(book);
             }
+            authorRepository.saveAll(newAuthors);
+            book.setAuthors(newAuthors);
+        } else {
+            book.setAuthors(new ArrayList<>());
         }
 
         book = bookRepository.save(book);
         log.info("Đã cập nhật sách: id={}, title={}", book.getId(), book.getTitle());
         return bookMapper.toResponse(book);
+    }
+
+    /**
+     * Resolve authors from request: nếu có author_names thì tìm hoặc tạo theo tên;
+     * ngược lại dùng author_ids.
+     */
+    private List<Author> resolveAuthors(BookRequest request) {
+        if (request.getAuthorNames() != null && !request.getAuthorNames().isEmpty()) {
+            Set<String> seen = new LinkedHashSet<>();
+            List<Author> authors = new ArrayList<>();
+            for (String raw : request.getAuthorNames()) {
+                String name = raw != null ? raw.trim() : "";
+                if (name.isEmpty() || seen.contains(name)) continue;
+                seen.add(name);
+
+                Author author = authorRepository.findByNameIgnoreCase(name)
+                        .orElseGet(() -> {
+                            Author newAuthor = Author.builder().name(name).build();
+                            return authorRepository.save(newAuthor);
+                        });
+                authors.add(author);
+            }
+            return authors;
+        }
+        if (request.getAuthorIds() != null && !request.getAuthorIds().isEmpty()) {
+            List<Author> authors = authorRepository.findByIdIn(request.getAuthorIds());
+            if (authors.size() != request.getAuthorIds().size()) {
+                throw new AppException(ErrorCode.AUTHOR_NOT_FOUND);
+            }
+            return authors;
+        }
+        return List.of();
     }
 
     // ── DELETE /books/{id} ─────────────────────────────────────────────

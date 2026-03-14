@@ -10,4 +10,6 @@ import java.util.List;
 public interface AuthorRepository extends JpaRepository<Author, Integer> {
 
     List<Author> findByIdIn(List<Integer> ids);
+
+    java.util.Optional<Author> findByNameIgnoreCase(String name);
 }

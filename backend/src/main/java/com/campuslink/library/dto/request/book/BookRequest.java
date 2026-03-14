@@ -35,4 +35,8 @@ public class BookRequest {
 
     @JsonProperty("author_ids")
     List<Integer> authorIds;
+
+    /** Tên tác giả (cách nhau bởi dấu phẩy). Nếu không tồn tại sẽ tạo mới. Ưu tiên hơn author_ids. */
+    @JsonProperty("author_names")
+    List<String> authorNames;
 }
