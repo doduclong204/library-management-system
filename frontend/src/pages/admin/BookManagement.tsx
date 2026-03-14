@@ -25,6 +25,11 @@ import { getAccessToken } from "@/store/authStore";
 
 const GENRES = ["Classic", "Fantasy", "Dystopian", "Romance", "Science Fiction", "Fiction", "Non-Fiction", "Philosophy", "Satire"];
 
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
 const EMPTY_FORM: BookRequest = {
@@ -33,10 +38,18 @@ const EMPTY_FORM: BookRequest = {
   genre: "Fiction",
   publication_year: new Date().getFullYear(),
   total_copies: 1,
+<<<<<<< Updated upstream
   author_ids: [],
   image_url: "",
 };
 
+=======
+  author_names: [],
+  image_url: "",
+};
+
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 const BookManagement = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -142,6 +155,7 @@ const BookManagement = () => {
     e.target.value = "";
   };
 
+<<<<<<< Updated upstream
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -153,6 +167,25 @@ const BookManagement = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setAuthorInput("");
+=======
+  const openEdit = (book: Book) => {
+    setEditingId(book.id);
+<<<<<<< Updated upstream
+    setTitle(book.title); setAuthor(book.author); setIsbn(book.isbn); setGenre(book.genre);
+    setYear(String(book.year)); setDescription(book.description || ""); setPublisher(book.publisher || "");
+=======
+    setForm({
+      isbn: book.isbn,
+      title: book.title,
+      genre: book.genre ?? "Fiction",
+      publication_year: book.publication_year,
+      total_copies: book.total_copies,
+      author_names: [],
+      image_url: book.image_url ?? "",
+    });
+    setAuthorInput(book.authors?.join(", ") ?? "");
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
     setFormOpen(true);
   }, []);
 
@@ -172,6 +205,7 @@ const BookManagement = () => {
   }, []);
 
   const handleSave = () => {
+<<<<<<< Updated upstream
     const authorIds = authorInput
       .split(",")
       .map(s => parseInt(s.trim()))
@@ -179,6 +213,22 @@ const BookManagement = () => {
     const payload: BookRequest = { ...form, author_ids: authorIds };
     if (editingId !== null) {
       updateMutation.mutate({ id: editingId, data: payload });
+=======
+<<<<<<< Updated upstream
+    if (!title || !author || !isbn) return;
+    if (editingId) {
+      setBooks(books.map(b => b.id === editingId ? { ...b, title, author, isbn, genre, year: parseInt(year) || b.year, description, publisher } : b));
+      toast({ title: "Đã cập nhật", description: `"${title}" đã được cập nhật.` });
+=======
+    const authorNames = authorInput
+      .split(",")
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    const payload: BookRequest = { ...form, author_names: authorNames };
+    if (editingId !== null) {
+      updateMutation.mutate({ id: editingId, data: payload });
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
     } else {
       createMutation.mutate(payload);
     }
@@ -422,6 +472,7 @@ const BookManagement = () => {
               />
             </div>
             <div className="sm:col-span-2">
+<<<<<<< Updated upstream
               <Label>ID tác giả (cách nhau bởi dấu phẩy)</Label>
               <Input
                 value={authorInput}
@@ -429,6 +480,21 @@ const BookManagement = () => {
                 placeholder="Ví dụ: 1, 2, 3"
                 className="mt-1.5"
               />
+=======
+<<<<<<< Updated upstream
+              <Label>Mô tả</Label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} className="mt-1.5 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+=======
+              <Label>Tên tác giả (cách nhau bởi dấu phẩy)</Label>
+              <Input
+                value={authorInput}
+                onChange={e => setAuthorInput(e.target.value)}
+                placeholder="Ví dụ: Nguyễn Du, Hồ Chí Minh, Nam Cao"
+                className="mt-1.5"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Tác giả chưa có trong hệ thống sẽ được tạo mới tự động.</p>
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
             </div>
           </div>
 
