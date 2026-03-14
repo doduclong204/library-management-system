@@ -36,4 +36,10 @@ public class BorrowRecordController {
         ReturnBookResponse response = borrowRecordService.returnBook(request);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/overdue")
+    public ResponseEntity<List<BookReturnSearchResponse>> getOverdueRecords() {
+        List<BookReturnSearchResponse> results = borrowRecordService.getOverdueRecords();
+        return ResponseEntity.ok(results);
+    }
 }

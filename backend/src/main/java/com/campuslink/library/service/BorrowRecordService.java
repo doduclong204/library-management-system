@@ -27,6 +27,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.campuslink.library.enums.BorrowStatus.borrowed;
+import static com.campuslink.library.enums.BorrowStatus.overdue;
+
 @Service
 @RequiredArgsConstructor
 public class BorrowRecordService {
@@ -147,5 +150,19 @@ public class BorrowRecordService {
                 "Trả sách thành công. Quá hạn %d ngày. Phí phạt: %,.0f đ (chưa thanh toán).",
                 overdueDays, fineAmount
         );
+    }
+
+    public List<BookReturnSearchResponse> getOverdueRecords() {
+        List<BorrowRecord> records = borrowRecordRepository.findByStatusInAndDueDateBefore(
+                List.of(borrowed, overdue), LocalDate.now());
+
+        return records.stream().map(record -> {
+            BookReturnSearchResponse response = borrowRecordMapper.toSearchResponse(record);
+            long overdueDays = Math.max(0, ChronoUnit.DAYS.between(record.getDueDate(), LocalDate.now()));
+            response.setOverdueDays(overdueDays);
+            response.setOverdue(true);
+            response.setEstimatedFine(calculateFine(record.getDueDate(), LocalDate.now()));
+            return response;
+        }).toList();
     }
 }
