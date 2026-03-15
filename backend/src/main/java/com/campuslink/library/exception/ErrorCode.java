@@ -55,11 +55,14 @@ public enum ErrorCode {
     PASSWORD_TOO_WEAK(400, "Mật khẩu quá yếu (phải có ít nhất 8 ký tự, chữ hoa, chữ thường, số)",
             HttpStatus.BAD_REQUEST),
 
+    FINE_ALREADY_PAID(4009, "Tiền phạt đã được thanh toán trước đó", HttpStatus.BAD_REQUEST),
+
     // BORROW / LOAN
     BORROW_NOT_FOUND(404, "Không tìm thấy phiếu mượn", HttpStatus.NOT_FOUND),
     BORROW_ALREADY_RETURNED(400, "Phiếu mượn đã được trả", HttpStatus.BAD_REQUEST),
     COPY_ALREADY_BORROWED(400, "Bản sao sách đang được mượn", HttpStatus.BAD_REQUEST),
     BORROW_RECORD_NOT_UNIQUE(400, "Tìm thấy nhiều phiếu mượn, vui lòng cung cấp barcode để xác định chính xác", HttpStatus.BAD_REQUEST);
+
 
     private final int code;
     private final String message;

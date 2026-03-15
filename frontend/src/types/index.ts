@@ -18,7 +18,8 @@ export interface BookRequest {
   genre?: string;
   publication_year?: number;
   total_copies: number;
-  author_ids: number[];
+  author_ids?: number[];
+  author_names?: string[];
 }
 
 export interface User {

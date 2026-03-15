@@ -50,6 +50,9 @@ public class BorrowRecord {
     @Column(columnDefinition = "boolean default false")
     private Boolean reminderSent = false;
 
+    @Column(columnDefinition = "boolean default false")
+    private Boolean finePaid = false;
+
     @PrePersist
     public void prePersist() {
         if (this.borrowDate == null) {

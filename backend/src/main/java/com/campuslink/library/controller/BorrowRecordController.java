@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -18,28 +19,40 @@ public class BorrowRecordController {
 
     private final BorrowRecordService borrowRecordService;
 
+    @PatchMapping("/{id}/pay-fine")
+    public ResponseEntity<Void> payFine(@PathVariable Integer id) {
+        borrowRecordService.payFine(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<BookReturnSearchResponse>> searchBorrowedBooks(
             @RequestParam(required = false) String isbn,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String barcode
     ) {
-        List<BookReturnSearchResponse> results =
-                borrowRecordService.searchBorrowedBooks(isbn, title, barcode);
-        return ResponseEntity.ok(results);
+        return ResponseEntity.ok(borrowRecordService.searchBorrowedBooks(isbn, title, barcode));
     }
 
     @PostMapping("/return")
     public ResponseEntity<ReturnBookResponse> returnBook(
             @Valid @RequestBody ReturnBookRequest request
     ) {
-        ReturnBookResponse response = borrowRecordService.returnBook(request);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(borrowRecordService.returnBook(request));
     }
 
     @GetMapping("/overdue")
     public ResponseEntity<List<BookReturnSearchResponse>> getOverdueRecords() {
-        List<BookReturnSearchResponse> results = borrowRecordService.getOverdueRecords();
-        return ResponseEntity.ok(results);
+        return ResponseEntity.ok(borrowRecordService.getOverdueRecords());
+    }
+
+    @GetMapping("/fine-paid-list")
+    public ResponseEntity<List<BookReturnSearchResponse>> getPaidRecords() {
+        return ResponseEntity.ok(borrowRecordService.getPaidRecords());
+    }
+
+    @GetMapping("/fine-paid-total")
+    public ResponseEntity<BigDecimal> getPaidTotal() {
+        return ResponseEntity.ok(borrowRecordService.getTotalPaidFines());
     }
 }

@@ -20,4 +20,13 @@ export const borrowRecordApi = {
 
   getOverdue: () =>
     api.get<BookReturnSearchResponse[]>("/borrow-records/overdue"),
+
+  getPaidRecords: () =>
+    api.get<BookReturnSearchResponse[]>("/borrow-records/fine-paid-list"),
+
+  getPaidTotal: () =>
+    api.get<number>("/borrow-records/fine-paid-total"),
+
+  payFine: (id: number) =>
+    api.patch(`/borrow-records/${id}/pay-fine`),
 };

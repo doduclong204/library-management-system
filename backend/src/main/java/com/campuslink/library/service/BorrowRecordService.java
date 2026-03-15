@@ -153,16 +153,51 @@ public class BorrowRecordService {
     }
 
     public List<BookReturnSearchResponse> getOverdueRecords() {
-        List<BorrowRecord> records = borrowRecordRepository.findByStatusInAndDueDateBefore(
-                List.of(borrowed, overdue), LocalDate.now());
+        List<BorrowRecord> records = borrowRecordRepository
+                .findByStatusAndFineAmountGreaterThanAndFinePaidFalse(
+                        BorrowStatus.returned, BigDecimal.ZERO);
 
         return records.stream().map(record -> {
             BookReturnSearchResponse response = borrowRecordMapper.toSearchResponse(record);
-            long overdueDays = Math.max(0, ChronoUnit.DAYS.between(record.getDueDate(), LocalDate.now()));
+            long overdueDays = Math.max(0, ChronoUnit.DAYS.between(
+                    record.getDueDate(), record.getReturnDate()));
             response.setOverdueDays(overdueDays);
             response.setOverdue(true);
-            response.setEstimatedFine(calculateFine(record.getDueDate(), LocalDate.now()));
+            response.setEstimatedFine(record.getFineAmount());
             return response;
         }).toList();
+    }
+
+    public List<BookReturnSearchResponse> getPaidRecords() {
+        List<BorrowRecord> records = borrowRecordRepository
+                .findByStatusAndFineAmountGreaterThanAndFinePaidTrue(
+                        BorrowStatus.returned, BigDecimal.ZERO);
+
+        return records.stream().map(record -> {
+            BookReturnSearchResponse response = borrowRecordMapper.toSearchResponse(record);
+            long overdueDays = Math.max(0, ChronoUnit.DAYS.between(
+                    record.getDueDate(), record.getReturnDate()));
+            response.setOverdueDays(overdueDays);
+            response.setOverdue(true);
+            response.setEstimatedFine(record.getFineAmount());
+            return response;
+        }).toList();
+    }
+
+    public BigDecimal getTotalPaidFines() {
+        return borrowRecordRepository.sumPaidFines();
+    }
+
+    @Transactional
+    public void payFine(Integer id) {
+        BorrowRecord record = borrowRecordRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.BORROW_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(record.getFinePaid())) {
+            throw new AppException(ErrorCode.FINE_ALREADY_PAID);
+        }
+
+        record.setFinePaid(true);
+        borrowRecordRepository.save(record);
     }
 }
