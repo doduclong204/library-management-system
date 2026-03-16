@@ -1,5 +1,5 @@
 import api from "./api";
-import type { ApiResponse, ApiPagination, Book, BorrowRecord, Fine, User, BookRequest } from "@/types";
+import type { ApiResponse, ApiPagination, Book, BorrowRecord, BorrowRequest, BorrowResponse, Fine, User, BookRequest, PatronSearchResult, BookCopy } from "@/types";
 
 export const bookApi = {
   getAll: (params?: Record<string, string | number>) =>
@@ -19,8 +19,9 @@ export const bookApi = {
 };
 
 export const borrowApi = {
-  borrow: (data: { bookId: string; userId: string; dueDate: string }) =>
-    api.post<ApiResponse<BorrowRecord>>("/borrow", data),
+  // ✅ Sửa: /borrows (có s) + đúng kiểu BorrowRequest/BorrowResponse
+  borrow: (data: BorrowRequest) =>
+    api.post<ApiResponse<BorrowResponse>>("/borrows", data),
 
   return: (data: { borrowId: string; returnDate: string }) =>
     api.post<ApiResponse<BorrowRecord>>("/return", data),
@@ -67,4 +68,20 @@ export const ocrApi = {
 export const recommendApi = {
   get: (userId: number) =>
     api.get<ApiResponse<Book[]>>(`/recommendations/${userId}`),
+};
+
+export const patronApi = {
+  search: async (email: string) => {
+    const res = await api.get<PatronSearchResult>("/patrons/search", {
+      params: { email },
+    });
+    // Bọc thành array để component dùng được
+    return { data: { data: res.data ? [res.data] : [] } };
+  },
+};
+export const bookCopyApi = {
+  searchByIsbnOrBarcode: (query: string) =>
+    api.get<ApiResponse<BookCopy[]>>("/book-copies/search", {
+      params: { q: query },
+    }),
 };
