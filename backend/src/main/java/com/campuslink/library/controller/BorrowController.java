@@ -1,5 +1,6 @@
 package com.campuslink.library.controller;
 
+import com.campuslink.library.dto.request.BorrowRequest;
 import com.campuslink.library.dto.response.BorrowResponse;
 import com.campuslink.library.enums.BorrowStatus;
 import com.campuslink.library.service.BorrowService;
@@ -25,5 +26,10 @@ public class BorrowController {
         }
 
         return borrowService.getAllBorrows();
+    }
+
+    @PostMapping
+    public BorrowResponse borrowBook(@RequestBody BorrowRequest request) {
+        return borrowService.borrowBook(request);
     }
 }

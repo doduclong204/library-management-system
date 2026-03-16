@@ -138,3 +138,85 @@ export interface ReturnBookRequest {
   barcode?: string;
   returnDate: string;
 }
+
+// Thêm vào cuối file
+
+export interface BorrowRequest {
+  email: string;
+  fullName?: string;
+  studentId?: string;
+  bookCopyId: number;
+  librarianId?: number;
+  dueDate: string; // ISO format: "2026-03-29"
+}
+
+// BorrowResponse khớp với backend
+export interface BorrowResponse {
+  id: number;
+  userName: string;   // mapped từ patronName
+  email: string;
+  bookTitle: string;
+  borrowDate: string;
+  dueDate: string;
+  returnDate?: string;
+  status: BorrowStatus;
+  fine?: number;
+}
+
+// Patron search (để tìm người mượn theo email)
+export interface PatronSearchResult {
+  id: number;
+  email: string;
+  fullName: string;
+  studentId?: string;
+}
+
+// BookCopy (để biết bookCopyId khi chọn sách)
+export interface BookCopy {
+  id: number;
+  barcode: string;
+  status: "available" | "borrowed" | "lost";
+  bookId: number;
+  bookTitle: string;
+  isbn: string;
+}
+
+// Borrow request/response khớp với backend
+export interface BorrowRequest {
+  email: string;
+  fullName?: string;
+  studentId?: string;
+  bookCopyId: number;
+  librarianId?: number;
+  dueDate: string; // "yyyy-MM-dd"
+}
+
+export interface BorrowResponse {
+  id: number;
+  userName: string;
+  email: string;
+  bookTitle: string;
+  borrowDate: string;
+  dueDate: string;
+  returnDate?: string;
+  status: BorrowStatus;
+  fine?: number;
+}
+
+// Patron search result
+export interface PatronSearchResult {
+  id: number;
+  email: string;
+  fullName: string;
+  studentId?: string;
+}
+
+// BookCopy — để lấy bookCopyId khi chọn sách
+export interface BookCopy {
+  id: number;
+  barcode: string;
+  status: "available" | "borrowed" | "lost";
+  bookId: number;
+  bookTitle: string;
+  isbn: string;
+}
