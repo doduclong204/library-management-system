@@ -35,11 +35,21 @@ public class BookServiceImpl implements BookService {
     private final BookMapper bookMapper;
 
     @Override
-    public ApiPagination<BookResponse> getBooks(int page, int size, String keyword, String genre) {
-        // page từ client bắt đầu từ 1, Pageable bắt đầu từ 0
-        Pageable pageable = PageRequest.of(page - 1, size, Sort.by("id").descending());
+    public ApiPagination<BookResponse> getBooks(int page, int size, String keyword, String genre,
+                                                String authorName, Integer yearFrom, Integer yearTo,
+                                                String sortBy) {
+        Sort sort = switch (sortBy == null ? "" : sortBy) {
+            case "title_asc"   -> Sort.by("title").ascending();
+            case "title_desc"  -> Sort.by("title").descending();
+            case "year_asc"    -> Sort.by("publicationYear").ascending();
+            case "year_desc"   -> Sort.by("publicationYear").descending();
+            default            -> Sort.by("id").descending();
+        };
 
-        Page<Book> bookPage = bookRepository.searchBooks(keyword, genre, pageable);
+        Pageable pageable = PageRequest.of(page - 1, size, sort);
+        Page<Book> bookPage = bookRepository.searchBooks(
+                keyword, genre, authorName, yearFrom, yearTo, pageable
+        );
 
         List<BookResponse> bookResponses = bookPage.getContent()
                 .stream()
@@ -59,7 +69,6 @@ public class BookServiceImpl implements BookService {
                 .build();
     }
 
-    // ── GET /books/{id} ────────────────────────────────────────────────
     @Override
     public BookResponse getBookById(Integer id) {
         Book book = bookRepository.findById(id)
@@ -67,16 +76,13 @@ public class BookServiceImpl implements BookService {
         return bookMapper.toResponse(book);
     }
 
-    // ── POST /books ────────────────────────────────────────────────────
     @Override
     @Transactional
     public BookResponse createBook(BookRequest request) {
-        // Kiểm tra ISBN trùng
         if (bookRepository.existsByIsbn(request.getIsbn())) {
             throw new AppException(ErrorCode.BOOK_EXISTED);
         }
 
-        // Tạo entity Book
         Book book = Book.builder()
                 .isbn(request.getIsbn())
                 .title(request.getTitle())
@@ -92,9 +98,7 @@ public class BookServiceImpl implements BookService {
         List<Author> authors = resolveAuthors(request);
         if (!authors.isEmpty()) {
             for (Author author : authors) {
-                if (author.getBooks() == null) {
-                    author.setBooks(new ArrayList<>());
-                }
+                if (author.getBooks() == null) author.setBooks(new ArrayList<>());
                 author.getBooks().add(book);
             }
             authorRepository.saveAll(authors);
@@ -111,44 +115,33 @@ public class BookServiceImpl implements BookService {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BOOK_NOT_FOUND));
 
-        // Kiểm tra ISBN trùng với sách khác
         if (!book.getIsbn().equals(request.getIsbn()) && bookRepository.existsByIsbn(request.getIsbn())) {
             throw new AppException(ErrorCode.BOOK_EXISTED);
         }
 
-        // Cập nhật thông tin cơ bản
         book.setIsbn(request.getIsbn());
         book.setTitle(request.getTitle());
         book.setImageUrl(request.getImageUrl());
         book.setGenre(request.getGenre());
         book.setPublicationYear(request.getPublicationYear());
 
-        // Cập nhật số lượng: điều chỉnh availableCopies theo delta
         int oldTotal = book.getTotalCopies() != null ? book.getTotalCopies() : 0;
         int newTotal = request.getTotalCopies();
         int oldAvailable = book.getAvailableCopies() != null ? book.getAvailableCopies() : 0;
-        int newAvailable = oldAvailable + (newTotal - oldTotal);
-        if (newAvailable < 0) {
-            newAvailable = 0;
-        }
+        int newAvailable = Math.max(0, oldAvailable + (newTotal - oldTotal));
         book.setTotalCopies(newTotal);
         book.setAvailableCopies(newAvailable);
 
-        // Cập nhật tác giả
         List<Author> newAuthors = resolveAuthors(request);
-        // Xóa liên kết cũ (owner side là Author)
         if (book.getAuthors() != null) {
             for (Author oldAuthor : book.getAuthors()) {
                 oldAuthor.getBooks().remove(book);
             }
             authorRepository.saveAll(book.getAuthors());
         }
-        // Thêm liên kết mới
         if (!newAuthors.isEmpty()) {
             for (Author author : newAuthors) {
-                if (author.getBooks() == null) {
-                    author.setBooks(new ArrayList<>());
-                }
+                if (author.getBooks() == null) author.setBooks(new ArrayList<>());
                 author.getBooks().add(book);
             }
             authorRepository.saveAll(newAuthors);
@@ -162,10 +155,6 @@ public class BookServiceImpl implements BookService {
         return bookMapper.toResponse(book);
     }
 
-    /**
-     * Resolve authors from request: nếu có author_names thì tìm hoặc tạo theo tên;
-     * ngược lại dùng author_ids.
-     */
     private List<Author> resolveAuthors(BookRequest request) {
         if (request.getAuthorNames() != null && !request.getAuthorNames().isEmpty()) {
             Set<String> seen = new LinkedHashSet<>();
@@ -174,7 +163,6 @@ public class BookServiceImpl implements BookService {
                 String name = raw != null ? raw.trim() : "";
                 if (name.isEmpty() || seen.contains(name)) continue;
                 seen.add(name);
-
                 Author author = authorRepository.findByNameIgnoreCase(name)
                         .orElseGet(() -> {
                             Author newAuthor = Author.builder().name(name).build();
@@ -194,14 +182,12 @@ public class BookServiceImpl implements BookService {
         return List.of();
     }
 
-    // ── DELETE /books/{id} ─────────────────────────────────────────────
     @Override
     @Transactional
     public void deleteBook(Integer id) {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BOOK_NOT_FOUND));
 
-        // Xóa liên kết ManyToMany với Author trước
         if (book.getAuthors() != null) {
             for (Author author : book.getAuthors()) {
                 author.getBooks().remove(book);

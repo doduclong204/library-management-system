@@ -18,20 +18,22 @@ public class BookController {
 
     private final BookService bookService;
 
-    // GET /books?page=1&size=10&keyword=abc&genre=Fantasy
     @GetMapping
     public ApiResponse<ApiPagination<BookResponse>> getBooks(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false, defaultValue = "") String keyword,
-            @RequestParam(required = false, defaultValue = "") String genre
+            @RequestParam(required = false, defaultValue = "") String genre,
+            @RequestParam(required = false, defaultValue = "") String authorName,
+            @RequestParam(required = false) Integer yearFrom,
+            @RequestParam(required = false) Integer yearTo,
+            @RequestParam(required = false, defaultValue = "") String sortBy
     ) {
         ApiResponse<ApiPagination<BookResponse>> res = new ApiResponse<>();
-        res.setData(bookService.getBooks(page, size, keyword, genre));
+        res.setData(bookService.getBooks(page, size, keyword, genre, authorName, yearFrom, yearTo, sortBy));
         return res;
     }
 
-    // GET /books/{id}
     @GetMapping("/{id}")
     public ApiResponse<BookResponse> getBookById(@PathVariable Integer id) {
         ApiResponse<BookResponse> res = new ApiResponse<>();
@@ -39,7 +41,6 @@ public class BookController {
         return res;
     }
 
-    // POST /books
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<BookResponse> createBook(@Valid @RequestBody BookRequest request) {
@@ -50,7 +51,6 @@ public class BookController {
         return res;
     }
 
-    // PUT /books/{id}
     @PutMapping("/{id}")
     public ApiResponse<BookResponse> updateBook(
             @PathVariable Integer id,
@@ -62,7 +62,6 @@ public class BookController {
         return res;
     }
 
-    // DELETE /books/{id}
     @DeleteMapping("/{id}")
     public ApiResponse<ApiString> deleteBook(@PathVariable Integer id) {
         bookService.deleteBook(id);
