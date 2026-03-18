@@ -19,7 +19,6 @@ export const bookApi = {
 };
 
 export const borrowApi = {
-  // ✅ Sửa: /borrows (có s) + đúng kiểu BorrowRequest/BorrowResponse
   borrow: (data: BorrowRequest) =>
     api.post<ApiResponse<BorrowResponse>>("/borrows", data),
 
@@ -75,10 +74,10 @@ export const patronApi = {
     const res = await api.get<PatronSearchResult>("/patrons/search", {
       params: { email },
     });
-    // Bọc thành array để component dùng được
     return { data: { data: res.data ? [res.data] : [] } };
   },
 };
+
 export const bookCopyApi = {
   searchByIsbnOrBarcode: (query: string) =>
     api.get<ApiResponse<BookCopy[]>>("/book-copies/search", {

@@ -28,7 +28,7 @@ const BorrowListPage = () => {
         const res = await api.get("/borrows");
         // Hỗ trợ cả 2 dạng response: plain array hoặc wrapped { data: [...] }
         const data = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
-        setBorrows(data);
+setBorrows(data.sort((a: BorrowRecord, b: BorrowRecord) => Number(b.id) - Number(a.id)));
       } catch (err) {
         console.error("Lỗi tải danh sách mượn:", err);
         setError("Không thể tải danh sách. Vui lòng thử lại.");

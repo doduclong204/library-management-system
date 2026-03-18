@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { borrowApi, patronApi, bookApi } from "@/services/apiServices";
-import type { PatronSearchResult, BorrowRequest, Book } from "@/types";
+import type { PatronSearchResult, BorrowRequest, BorrowResponse, Book } from "@/types";
 import {
   BookOpen, ScanLine, Camera, CameraOff, CheckCircle,
   User, Calendar as CalendarIcon, UserPlus, Mail, Loader2
@@ -16,14 +16,12 @@ import { cn } from "@/lib/utils";
 import { format, addDays } from "date-fns";
 
 const BorrowManagement = () => {
-  // --- Book ---
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
   const [bookQuery, setBookQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [showBookDropdown, setShowBookDropdown] = useState(false);
 
-  // --- Patron ---
   const [emailQuery, setEmailQuery] = useState("");
   const [matchedPatrons, setMatchedPatrons] = useState<PatronSearchResult[]>([]);
   const [selectedPatron, setSelectedPatron] = useState<PatronSearchResult | null>(null);
@@ -31,7 +29,6 @@ const BorrowManagement = () => {
   const [newName, setNewName] = useState("");
   const [newStudentId, setNewStudentId] = useState("");
 
-  // --- Other ---
   const [dueDate, setDueDate] = useState<Date>(addDays(new Date(), 14));
   const [cameraOn, setCameraOn] = useState(false);
   const [isSearchingPatron, setIsSearchingPatron] = useState(false);
@@ -42,33 +39,31 @@ const BorrowManagement = () => {
   const patronSearchTimer = useRef<ReturnType<typeof setTimeout>>();
   const { toast } = useToast();
 
-  // Load toàn bộ sách khi mount
-  useEffect(() => {
-    const fetchBooks = async () => {
-      setIsLoadingBooks(true);
-      try {
-        const res = await bookApi.getAll({ pageSize: 200 });
-        setAllBooks(res.data.data?.result ?? []);
-      } catch {
-        setAllBooks([]);
-      } finally {
-        setIsLoadingBooks(false);
-      }
-    };
-    fetchBooks();
+  const fetchBooks = useCallback(async () => {
+    setIsLoadingBooks(true);
+    try {
+      const res = await bookApi.getAll({ pageSize: 200 });
+      setAllBooks(res.data.data?.result ?? []);
+    } catch {
+      setAllBooks([]);
+    } finally {
+      setIsLoadingBooks(false);
+    }
   }, []);
 
-  // Filter sách theo query (client-side)
+  useEffect(() => {
+    fetchBooks();
+  }, [fetchBooks]);
+
   const matchedBooks = bookQuery.length > 1
     ? allBooks.filter(b =>
         b.title.toLowerCase().includes(bookQuery.toLowerCase()) ||
         b.isbn.toLowerCase().includes(bookQuery.toLowerCase())
       ).slice(0, 6)
-    : allBooks.slice(0, 6); // hiện 6 sách đầu khi chưa gõ gì
+    : allBooks.slice(0, 6);
 
-  // Debounce search patron
   useEffect(() => {
-    if (emailQuery.length < 3) {
+    if (emailQuery.length < 3 || selectedPatron) {
       setMatchedPatrons([]);
       setShowNewPatronForm(false);
       return;
@@ -80,15 +75,24 @@ const BorrowManagement = () => {
         const res = await patronApi.search(emailQuery);
         const results = res.data.data ?? [];
         setMatchedPatrons(results);
-        if (results.length === 0 && !selectedPatron) setShowNewPatronForm(true);
-        else setShowNewPatronForm(false);
+
+        if (results.length === 1) {
+          setSelectedPatron(results[0]);
+          setEmailQuery(results[0].email);
+          setMatchedPatrons([]);
+          setShowNewPatronForm(false);
+        } else if (results.length === 0) {
+          setShowNewPatronForm(true);
+        } else {
+          setShowNewPatronForm(false);
+        }
       } catch {
         setMatchedPatrons([]);
       } finally {
         setIsSearchingPatron(false);
       }
     }, 400);
-  }, [emailQuery, selectedPatron]);
+  }, [emailQuery]);
 
   const toggleCamera = async () => {
     if (cameraOn) {
@@ -128,11 +132,15 @@ const BorrowManagement = () => {
     setIsSubmitting(true);
     try {
       const res = await borrowApi.borrow(payload);
+      const result = (res.data?.data ?? res.data) as BorrowResponse;
       toast({
         title: "Mượn sách thành công! ✅",
-        description: `${res.data.data.bookTitle} → ${res.data.data.userName}. Hạn trả: ${format(dueDate, "dd/MM/yyyy")}`,
+        description: `${result.bookTitle} → ${result.userName}. Hạn trả: ${format(dueDate, "dd/MM/yyyy")}`,
       });
-      // Reset form
+
+      // Reload lại danh sách sách để cập nhật available_copies
+      await fetchBooks();
+
       setSelectedBook(null); setBookQuery("");
       setSelectedPatron(null); setEmailQuery("");
       setMatchedPatrons([]);
@@ -156,7 +164,6 @@ const BorrowManagement = () => {
         <p className="text-muted-foreground mt-1">Quét barcode hoặc tìm sách để xử lý mượn.</p>
       </div>
 
-      {/* Book search */}
       <div className="glass-card p-5 max-w-xl">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -193,7 +200,6 @@ const BorrowManagement = () => {
           />
         </div>
 
-        {/* Dropdown danh sách sách */}
         {showBookDropdown && !selectedBook && (
           <ul className="mt-2 border border-border rounded-lg overflow-hidden shadow-md max-h-64 overflow-y-auto">
             {matchedBooks.length === 0 ? (
@@ -240,7 +246,6 @@ const BorrowManagement = () => {
           </ul>
         )}
 
-        {/* Sách đã chọn */}
         {selectedBook && (
           <div className="mt-2 p-3 bg-primary/5 rounded-lg text-sm flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-primary shrink-0" />
@@ -260,7 +265,6 @@ const BorrowManagement = () => {
         )}
       </div>
 
-      {/* Patron search */}
       <div className="glass-card p-5 max-w-xl space-y-4">
         <div>
           <Label className="flex items-center gap-2 mb-1.5">
@@ -344,7 +348,6 @@ const BorrowManagement = () => {
           )}
         </div>
 
-        {/* Due date */}
         <div>
           <Label>Hạn trả (mặc định +14 ngày)</Label>
           <Popover>

@@ -2,14 +2,15 @@ package com.campuslink.library.service;
 
 import com.campuslink.library.dto.request.BorrowRequest;
 import com.campuslink.library.dto.response.BorrowResponse;
+import com.campuslink.library.entity.Book;
 import com.campuslink.library.entity.BookCopy;
 import com.campuslink.library.entity.BorrowRecord;
-import com.campuslink.library.entity.Librarian;
 import com.campuslink.library.entity.Patron;
 import com.campuslink.library.enums.BookStatus;
 import com.campuslink.library.enums.BorrowStatus;
 import com.campuslink.library.mapper.BorrowMapper;
 import com.campuslink.library.repository.BookCopyRepository;
+import com.campuslink.library.repository.BookRepository;
 import com.campuslink.library.repository.BorrowRecordRepository;
 import com.campuslink.library.repository.LibrarianRepository;
 import com.campuslink.library.repository.PatronRepository;
@@ -28,6 +29,7 @@ public class BorrowService {
     private final BorrowMapper borrowMapper;
     private final PatronRepository patronRepository;
     private final BookCopyRepository bookCopyRepository;
+    private final BookRepository bookRepository;
     private final LibrarianRepository librarianRepository;
 
     public List<BorrowResponse> getAllBorrows() {
@@ -46,20 +48,27 @@ public class BorrowService {
 
     @Transactional
     public BorrowResponse borrowBook(BorrowRequest request) {
-        // 1. Tìm Patron
         Patron patron = patronRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người mượn"));
+                .orElseGet(() -> {
+                    Patron newPatron = new Patron();
+                    newPatron.setEmail(request.getEmail());
+                    newPatron.setFullName(request.getFullName());
+                    newPatron.setStudentId(request.getStudentId());
+                    return patronRepository.save(newPatron);
+                });
 
-        // 2. Tìm bản sao dựa trên Book ID (vì Frontend đang gửi Book ID)
         BookCopy bookCopy = bookCopyRepository
-                .findFirstAvailableByBookId(request.getBookCopyId()) // bookCopyId ở đây thực chất là bookId từ FE gửi lên
+                .findFirstAvailableByBookId(request.getBookCopyId())
                 .orElseThrow(() -> new RuntimeException("Sách này hiện đã được mượn hết, không còn bản sao trống"));
 
-        // 3. Cập nhật trạng thái bản sao ngay lập tức
         bookCopy.setStatus(BookStatus.borrowed);
         bookCopyRepository.save(bookCopy);
 
-        // 4. Tạo và lưu bản ghi mượn
+        Book book = bookRepository.findById(request.getBookCopyId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sách"));
+        book.setAvailableCopies(book.getAvailableCopies() - 1);
+        bookRepository.save(book);
+
         BorrowRecord record = BorrowRecord.builder()
                 .patron(patron)
                 .bookCopy(bookCopy)
