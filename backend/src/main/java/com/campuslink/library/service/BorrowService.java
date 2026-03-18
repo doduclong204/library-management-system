@@ -33,6 +33,7 @@ public class BorrowService {
     private final BookCopyRepository bookCopyRepository;
     private final BookRepository bookRepository;
     private final LibrarianRepository librarianRepository;
+    private final EmailNotificationService emailNotificationService;
 
     public List<BorrowResponse> getAllBorrows() {
         return borrowRepository.findAll()
@@ -50,7 +51,6 @@ public class BorrowService {
 
     @Transactional
     public List<BorrowResponse> borrowBook(BorrowRequest request) {
-        // Tìm hoặc tạo patron
         Patron patron = patronRepository.findByEmail(request.getEmail())
                 .orElseGet(() -> {
                     Patron newPatron = new Patron();
@@ -60,7 +60,6 @@ public class BorrowService {
                     return patronRepository.save(newPatron);
                 });
 
-        // Gộp bookCopyIds — hỗ trợ cả single (bookCopyId) và multi (bookCopyIds)
         List<Integer> bookIds = new ArrayList<>();
         if (request.getBookCopyIds() != null && !request.getBookCopyIds().isEmpty()) {
             bookIds.addAll(request.getBookCopyIds());
@@ -68,10 +67,8 @@ public class BorrowService {
             bookIds.add(request.getBookCopyId());
         }
 
-        // Sinh 1 sessionId chung cho toàn bộ phiếu mượn này
         String sessionId = UUID.randomUUID().toString();
-
-        List<BorrowResponse> responses = new ArrayList<>();
+        List<BorrowRecord> savedRecords = new ArrayList<>();
 
         for (Integer bookId : bookIds) {
             BookCopy bookCopy = bookCopyRepository
@@ -95,10 +92,13 @@ public class BorrowService {
                     .sessionId(sessionId)
                     .build();
 
-            BorrowRecord savedRecord = borrowRepository.save(record);
-            responses.add(borrowMapper.toBorrowResponse(savedRecord));
+            savedRecords.add(borrowRepository.save(record));
         }
 
-        return responses;
+        emailNotificationService.sendBorrowConfirmation(savedRecords);
+
+        return savedRecords.stream()
+                .map(borrowMapper::toBorrowResponse)
+                .toList();
     }
 }

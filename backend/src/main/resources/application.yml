@@ -20,8 +20,8 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/library_management1
-    username: root
-    password: 752004
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   jpa:
     hibernate:
@@ -30,12 +30,31 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
 jwt:
-  access-token-expiration: 900000  
+  access-token-expiration: 900000
   refresh-token-expiration: 604800000
-  secret: 9f8c7d6a5b4c3e2f1a0d9c8b7e6f5a4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8
+  secret: ${JWT_SECRET}
+
 upload:
   file:
     uri: file:///E:/Campuslink/library-management-system/upload/
     image-uri: file:///E:/Campuslink/library-management-system/upload/images/
     video-uri: file:///E:/Campuslink/library-management-system/upload/videos/
+
+app:
+  reminder:
+    days-before: 2
