@@ -13,16 +13,16 @@ public interface BookRepository extends JpaRepository<Book, Integer> {
 
     boolean existsByIsbn(String isbn);
 
-    // Tìm kiếm theo title, isbn, hoặc tên tác giả
     @Query("""
-        SELECT DISTINCT b FROM Book b
-        LEFT JOIN b.authors a
-        WHERE (:keyword IS NULL OR :keyword = ''
-               OR LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-               OR LOWER(b.isbn) LIKE LOWER(CONCAT('%', :keyword, '%'))
-               OR LOWER(a.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
-          AND (:genre IS NULL OR :genre = '' OR LOWER(b.genre) = LOWER(:genre))
-    """)
+    SELECT DISTINCT b FROM Book b
+    LEFT JOIN b.authors a
+    WHERE (:keyword IS NULL OR :keyword = ''
+           OR LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(b.isbn) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(a.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(b.fullText) LIKE LOWER(CONCAT('%', :keyword, '%')))
+      AND (:genre IS NULL OR :genre = '' OR LOWER(b.genre) = LOWER(:genre))
+""")
     Page<Book> searchBooks(
             @Param("keyword") String keyword,
             @Param("genre") String genre,
