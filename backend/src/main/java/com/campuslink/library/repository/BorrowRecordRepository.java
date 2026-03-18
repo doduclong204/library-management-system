@@ -2,6 +2,7 @@ package com.campuslink.library.repository;
 
 import com.campuslink.library.entity.BorrowRecord;
 import com.campuslink.library.enums.BorrowStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -25,4 +26,15 @@ public interface BorrowRecordRepository extends JpaRepository<BorrowRecord, Inte
 
     @Query("SELECT COALESCE(SUM(b.fineAmount), 0) FROM BorrowRecord b WHERE b.finePaid = true")
     BigDecimal sumPaidFines();
+
+    @EntityGraph(attributePaths = {
+            "patron",
+            "bookCopy",
+            "bookCopy.book"
+    })
+    List<BorrowRecord> findByDueDateAndStatusAndReminderSent(
+            LocalDate dueDate,
+            BorrowStatus status,
+            Boolean reminderSent
+    );
 }
