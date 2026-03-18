@@ -20,16 +20,12 @@ public class BorrowController {
     public List<BorrowResponse> getBorrows(
             @RequestParam(required = false) BorrowStatus status
     ) {
-
-        if (status != null) {
-            return borrowService.getBorrowsByStatus(status);
-        }
-
+        if (status != null) return borrowService.getBorrowsByStatus(status);
         return borrowService.getAllBorrows();
     }
 
     @PostMapping
-    public BorrowResponse borrowBook(@RequestBody BorrowRequest request) {
+    public List<BorrowResponse> borrowBook(@RequestBody BorrowRequest request) {
         return borrowService.borrowBook(request);
     }
 }

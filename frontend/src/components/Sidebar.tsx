@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   Home, BookOpen, DollarSign, LogOut, X,
-  ArrowLeftRight, Undo2, ScanLine, List, ShieldCheck
+  ArrowLeftRight, ScanLine, List, ShieldCheck
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -21,7 +21,6 @@ const Sidebar = () => {
     { to: "/admin", icon: Home, label: "Dashboard" },
     { to: "/admin/books", icon: BookOpen, label: "Quản lý sách" },
     { to: "/admin/borrow", icon: ArrowLeftRight, label: "Mượn sách" },
-    { to: "/admin/return", icon: Undo2, label: "Trả sách" },
     { to: "/admin/borrow-list", icon: List, label: "Danh sách mượn" },
     { to: "/admin/fines", icon: DollarSign, label: "Quản lý tiền phạt" },
     { to: "/admin/ocr", icon: ScanLine, label: "OCR sách hiếm" },
@@ -56,7 +55,6 @@ const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
-
     </>
   );
 

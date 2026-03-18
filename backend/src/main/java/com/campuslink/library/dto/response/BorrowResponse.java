@@ -20,18 +20,14 @@ public class BorrowResponse {
     private String patronName;
 
     private String email;
-
     private String bookTitle;
-
     private LocalDate borrowDate;
-
     private LocalDate dueDate;
-
     private LocalDate returnDate;
-
     private BorrowStatus status;
 
     @JsonProperty("fine")
     private BigDecimal fineAmount;
 
+    private String sessionId;
 }

@@ -19,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -47,7 +49,8 @@ public class BorrowService {
     }
 
     @Transactional
-    public BorrowResponse borrowBook(BorrowRequest request) {
+    public List<BorrowResponse> borrowBook(BorrowRequest request) {
+        // Tìm hoặc tạo patron
         Patron patron = patronRepository.findByEmail(request.getEmail())
                 .orElseGet(() -> {
                     Patron newPatron = new Patron();
@@ -57,28 +60,45 @@ public class BorrowService {
                     return patronRepository.save(newPatron);
                 });
 
-        BookCopy bookCopy = bookCopyRepository
-                .findFirstAvailableByBookId(request.getBookCopyId())
-                .orElseThrow(() -> new RuntimeException("Sách này hiện đã được mượn hết, không còn bản sao trống"));
+        // Gộp bookCopyIds — hỗ trợ cả single (bookCopyId) và multi (bookCopyIds)
+        List<Integer> bookIds = new ArrayList<>();
+        if (request.getBookCopyIds() != null && !request.getBookCopyIds().isEmpty()) {
+            bookIds.addAll(request.getBookCopyIds());
+        } else if (request.getBookCopyId() != null) {
+            bookIds.add(request.getBookCopyId());
+        }
 
-        bookCopy.setStatus(BookStatus.borrowed);
-        bookCopyRepository.save(bookCopy);
+        // Sinh 1 sessionId chung cho toàn bộ phiếu mượn này
+        String sessionId = UUID.randomUUID().toString();
 
-        Book book = bookRepository.findById(request.getBookCopyId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sách"));
-        book.setAvailableCopies(book.getAvailableCopies() - 1);
-        bookRepository.save(book);
+        List<BorrowResponse> responses = new ArrayList<>();
 
-        BorrowRecord record = BorrowRecord.builder()
-                .patron(patron)
-                .bookCopy(bookCopy)
-                .borrowDate(LocalDate.now())
-                .dueDate(request.getDueDate())
-                .status(BorrowStatus.borrowed)
-                .build();
+        for (Integer bookId : bookIds) {
+            BookCopy bookCopy = bookCopyRepository
+                    .findFirstAvailableByBookId(bookId)
+                    .orElseThrow(() -> new RuntimeException("Sách này hiện đã được mượn hết: bookId=" + bookId));
 
-        BorrowRecord savedRecord = borrowRepository.save(record);
+            bookCopy.setStatus(BookStatus.borrowed);
+            bookCopyRepository.save(bookCopy);
 
-        return borrowMapper.toBorrowResponse(savedRecord);
+            Book book = bookRepository.findById(bookId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy sách"));
+            book.setAvailableCopies(book.getAvailableCopies() - 1);
+            bookRepository.save(book);
+
+            BorrowRecord record = BorrowRecord.builder()
+                    .patron(patron)
+                    .bookCopy(bookCopy)
+                    .borrowDate(LocalDate.now())
+                    .dueDate(request.getDueDate())
+                    .status(BorrowStatus.borrowed)
+                    .sessionId(sessionId)
+                    .build();
+
+            BorrowRecord savedRecord = borrowRepository.save(record);
+            responses.add(borrowMapper.toBorrowResponse(savedRecord));
+        }
+
+        return responses;
     }
 }

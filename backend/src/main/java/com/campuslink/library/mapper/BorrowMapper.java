@@ -14,12 +14,9 @@ public interface BorrowMapper {
     @Mapping(target = "returnDate", source = "returnDate")
     @Mapping(target = "status", source = "status")
     @Mapping(target = "fineAmount", source = "fineAmount")
-
     @Mapping(target = "patronName", source = "patron.fullName")
     @Mapping(target = "email", source = "patron.email")
-
     @Mapping(target = "bookTitle", source = "bookCopy.book.title")
-
+    @Mapping(target = "sessionId", source = "sessionId")
     BorrowResponse toBorrowResponse(BorrowRecord record);
-
 }

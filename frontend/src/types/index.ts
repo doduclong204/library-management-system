@@ -94,6 +94,7 @@ export interface BorrowRecord {
   userName?: string;
   email?: string;
   status?: BorrowStatus;
+  sessionId?: string;
 }
 
 // return book
@@ -139,16 +140,6 @@ export interface ReturnBookRequest {
   returnDate: string;
 }
 
-// Thêm vào cuối file
-
-export interface BorrowRequest {
-  email: string;
-  fullName?: string;
-  studentId?: string;
-  bookCopyId: number;
-  librarianId?: number;
-  dueDate: string; // ISO format: "2026-03-29"
-}
 
 // BorrowResponse khớp với backend
 export interface BorrowResponse {
@@ -186,9 +177,10 @@ export interface BorrowRequest {
   email: string;
   fullName?: string;
   studentId?: string;
-  bookCopyId: number;
+  bookCopyId?: number;
+  bookCopyIds?: number[];
   librarianId?: number;
-  dueDate: string; // "yyyy-MM-dd"
+  dueDate: string;
 }
 
 export interface BorrowResponse {

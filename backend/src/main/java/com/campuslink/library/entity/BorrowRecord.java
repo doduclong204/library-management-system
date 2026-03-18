@@ -53,19 +53,15 @@ public class BorrowRecord {
     @Column(columnDefinition = "boolean default false")
     private Boolean finePaid = false;
 
+    // Dùng để gộp nhiều sách mượn cùng 1 lúc
+    @Column(name = "session_id")
+    private String sessionId;
+
     @PrePersist
     public void prePersist() {
-        if (this.borrowDate == null) {
-            this.borrowDate = LocalDate.now();
-        }
-        if (this.fineAmount == null) {
-            this.fineAmount = BigDecimal.ZERO;
-        }
-        if (this.reminderSent == null) {
-            this.reminderSent = false;
-        }
-        if (this.status == null) {
-            this.status = BorrowStatus.borrowed;
-        }
+        if (this.borrowDate == null) this.borrowDate = LocalDate.now();
+        if (this.fineAmount == null) this.fineAmount = BigDecimal.ZERO;
+        if (this.reminderSent == null) this.reminderSent = false;
+        if (this.status == null) this.status = BorrowStatus.borrowed;
     }
 }

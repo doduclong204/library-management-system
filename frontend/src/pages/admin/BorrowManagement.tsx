@@ -6,7 +6,7 @@ import { BrowserMultiFormatReader } from "@zxing/browser";
 import { NotFoundException } from "@zxing/library";
 import {
   BookOpen, ScanLine, Camera, CameraOff, CheckCircle,
-  User, Calendar as CalendarIcon, UserPlus, Mail, Loader2, Upload
+  User, Calendar as CalendarIcon, UserPlus, Mail, Loader2, Upload, X, Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ const BorrowManagement = () => {
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
   const [bookQuery, setBookQuery] = useState("");
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedBooks, setSelectedBooks] = useState<Book[]>([]);
   const [showBookDropdown, setShowBookDropdown] = useState(false);
 
   const [emailQuery, setEmailQuery] = useState("");
@@ -54,16 +54,16 @@ const BorrowManagement = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchBooks();
-  }, [fetchBooks]);
+  useEffect(() => { fetchBooks(); }, [fetchBooks]);
 
   const matchedBooks = bookQuery.length > 1
     ? allBooks.filter(b =>
-        b.title.toLowerCase().includes(bookQuery.toLowerCase()) ||
-        b.isbn.toLowerCase().includes(bookQuery.toLowerCase())
+        !selectedBooks.find(s => s.id === b.id) && (
+          b.title.toLowerCase().includes(bookQuery.toLowerCase()) ||
+          b.isbn.toLowerCase().includes(bookQuery.toLowerCase())
+        )
       ).slice(0, 6)
-    : allBooks.slice(0, 6);
+    : allBooks.filter(b => !selectedBooks.find(s => s.id === b.id)).slice(0, 6);
 
   useEffect(() => {
     if (emailQuery.length < 3 || selectedPatron) {
@@ -78,7 +78,6 @@ const BorrowManagement = () => {
         const res = await patronApi.search(emailQuery);
         const results = res.data.data ?? [];
         setMatchedPatrons(results);
-
         if (results.length === 1) {
           setSelectedPatron(results[0]);
           setEmailQuery(results[0].email);
@@ -116,7 +115,6 @@ const BorrowManagement = () => {
         if (result) {
           stopCamera();
           setBookQuery(result.getText());
-          setSelectedBook(null);
           toast({ title: "Đã quét barcode!", description: result.getText() });
         }
         if (err && !(err instanceof NotFoundException)) console.error(err);
@@ -137,7 +135,6 @@ const BorrowManagement = () => {
       const result = await reader.decodeFromImageUrl(imgUrl);
       URL.revokeObjectURL(imgUrl);
       setBookQuery(result.getText());
-      setSelectedBook(null);
       toast({ title: "Đã đọc barcode!", description: result.getText() });
     } catch {
       toast({ title: "Không đọc được barcode", variant: "destructive" });
@@ -145,13 +142,25 @@ const BorrowManagement = () => {
     e.target.value = "";
   };
 
-  useEffect(() => {
-    return () => { stopCamera(); };
-  }, []);
+  useEffect(() => { return () => { stopCamera(); }; }, []);
+
+  const addBook = (book: Book) => {
+    if (book.available_copies <= 0) {
+      toast({ title: "Sách đã hết", description: `${book.title} không còn bản sao trống.`, variant: "destructive" });
+      return;
+    }
+    setSelectedBooks(prev => [...prev, book]);
+    setBookQuery("");
+    setShowBookDropdown(false);
+  };
+
+  const removeBook = (bookId: number) => {
+    setSelectedBooks(prev => prev.filter(b => b.id !== bookId));
+  };
 
   const handleBorrow = async () => {
-    if (!selectedBook || !selectedPatron || !dueDate) {
-      toast({ title: "Thiếu thông tin", description: "Vui lòng chọn sách và người mượn.", variant: "destructive" });
+    if (selectedBooks.length === 0 || !selectedPatron || !dueDate) {
+      toast({ title: "Thiếu thông tin", description: "Vui lòng chọn ít nhất 1 sách và người mượn.", variant: "destructive" });
       return;
     }
 
@@ -159,26 +168,28 @@ const BorrowManagement = () => {
       email: selectedPatron.email,
       fullName: selectedPatron.fullName,
       studentId: selectedPatron.studentId,
-      bookCopyId: selectedBook.id,
+      bookCopyIds: selectedBooks.map(b => b.id),
       dueDate: format(dueDate, "yyyy-MM-dd"),
     };
 
     setIsSubmitting(true);
     try {
       const res = await borrowApi.borrow(payload);
-      const result = (res.data?.data ?? res.data) as BorrowResponse;
+      const results = Array.isArray(res.data) ? res.data : [res.data?.data ?? res.data] as BorrowResponse[];
       toast({
         title: "Mượn sách thành công! ✅",
-        description: `${result.bookTitle} → ${result.userName}. Hạn trả: ${format(dueDate, "dd/MM/yyyy")}`,
+        description: `${results.length} cuốn → ${selectedPatron.fullName}. Hạn trả: ${format(dueDate, "dd/MM/yyyy")}`,
       });
 
       await fetchBooks();
-
-      setSelectedBook(null); setBookQuery("");
-      setSelectedPatron(null); setEmailQuery("");
+      setSelectedBooks([]);
+      setBookQuery("");
+      setSelectedPatron(null);
+      setEmailQuery("");
       setMatchedPatrons([]);
       setDueDate(addDays(new Date(), 14));
-      setNewName(""); setNewStudentId("");
+      setNewName("");
+      setNewStudentId("");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })
         ?.response?.data?.message ?? "Đã xảy ra lỗi";
@@ -194,13 +205,14 @@ const BorrowManagement = () => {
         <h1 className="page-header flex items-center gap-2">
           <BookOpen className="w-6 h-6 text-primary" /> Cho mượn sách
         </h1>
-        <p className="text-muted-foreground mt-1">Quét barcode hoặc tìm sách để xử lý mượn.</p>
+        <p className="text-muted-foreground mt-1">Chọn nhiều sách cùng lúc để tạo 1 phiếu mượn.</p>
       </div>
 
+      {/* Book search */}
       <div className="glass-card p-5 max-w-xl">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <ScanLine className="w-4 h-4 text-primary" /> Quét Barcode / ISBN
+            <ScanLine className="w-4 h-4 text-primary" /> Chọn sách
           </h3>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
@@ -237,7 +249,7 @@ const BorrowManagement = () => {
           )}
           <Input
             value={bookQuery}
-            onChange={e => { setBookQuery(e.target.value); setSelectedBook(null); }}
+            onChange={e => setBookQuery(e.target.value)}
             onFocus={() => setShowBookDropdown(true)}
             onBlur={() => setTimeout(() => setShowBookDropdown(false), 150)}
             placeholder="Nhập ISBN hoặc tên sách để tìm..."
@@ -245,7 +257,8 @@ const BorrowManagement = () => {
           />
         </div>
 
-        {showBookDropdown && !selectedBook && (
+        {/* Dropdown */}
+        {showBookDropdown && (
           <ul className="mt-2 border border-border rounded-lg overflow-hidden shadow-md max-h-64 overflow-y-auto">
             {matchedBooks.length === 0 ? (
               <li className="px-4 py-3 text-sm text-muted-foreground text-center">
@@ -261,11 +274,7 @@ const BorrowManagement = () => {
                 {matchedBooks.map(b => (
                   <li key={b.id}>
                     <button
-                      onMouseDown={() => {
-                        setSelectedBook(b);
-                        setBookQuery(b.title);
-                        setShowBookDropdown(false);
-                      }}
+                      onMouseDown={() => addBook(b)}
                       className="w-full text-left px-4 py-2.5 hover:bg-muted transition-colors flex items-center justify-between text-sm gap-3"
                     >
                       <div className="flex flex-col min-w-0">
@@ -274,15 +283,19 @@ const BorrowManagement = () => {
                           {b.isbn} · {b.authors?.join(", ")}
                         </span>
                       </div>
-                      <Badge
-                        variant={b.available_copies > 0 ? "outline" : "secondary"}
-                        className={cn(
-                          "shrink-0",
-                          b.available_copies > 0 ? "bg-success/10 text-success border-success/20" : ""
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge
+                          variant={b.available_copies > 0 ? "outline" : "secondary"}
+                          className={cn(b.available_copies > 0 ? "bg-success/10 text-success border-success/20" : "")}
+                        >
+                          {b.available_copies > 0 ? `Còn ${b.available_copies}` : "Hết"}
+                        </Badge>
+                        {b.available_copies > 0 && (
+                          <span className="text-primary">
+                            <Plus className="w-4 h-4" />
+                          </span>
                         )}
-                      >
-                        {b.available_copies > 0 ? `Còn ${b.available_copies}` : "Hết"}
-                      </Badge>
+                      </div>
                     </button>
                   </li>
                 ))}
@@ -291,25 +304,32 @@ const BorrowManagement = () => {
           </ul>
         )}
 
-        {selectedBook && (
-          <div className="mt-2 p-3 bg-primary/5 rounded-lg text-sm flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-primary shrink-0" />
-            <div className="flex flex-col min-w-0">
-              <strong className="truncate">{selectedBook.title}</strong>
-              <span className="text-xs text-muted-foreground">
-                {selectedBook.isbn} · {selectedBook.authors?.join(", ")}
-              </span>
-            </div>
-            <button
-              onClick={() => { setSelectedBook(null); setBookQuery(""); }}
-              className="ml-auto text-xs text-muted-foreground underline shrink-0"
-            >
-              Xóa
-            </button>
+        {/* Danh sách sách đã chọn */}
+        {selectedBooks.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs text-muted-foreground font-medium">
+              Đã chọn {selectedBooks.length} cuốn:
+            </p>
+            {selectedBooks.map(b => (
+              <div key={b.id} className="flex items-center gap-2 p-2.5 bg-primary/5 rounded-lg text-sm border border-primary/10">
+                <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="font-medium truncate">{b.title}</span>
+                  <span className="text-xs text-muted-foreground">{b.isbn}</span>
+                </div>
+                <button
+                  onClick={() => removeBook(b.id)}
+                  className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
+      {/* Patron + dueDate + submit */}
       <div className="glass-card p-5 max-w-xl space-y-4">
         <div>
           <Label className="flex items-center gap-2 mb-1.5">
@@ -414,14 +434,26 @@ const BorrowManagement = () => {
           </Popover>
         </div>
 
+        {/* Summary */}
+        {selectedBooks.length > 0 && selectedPatron && (
+          <div className="p-3 bg-muted/30 rounded-lg text-sm space-y-1 border border-border">
+            <p className="font-medium">Tóm tắt phiếu mượn:</p>
+            <p className="text-muted-foreground">👤 {selectedPatron.fullName}</p>
+            <p className="text-muted-foreground">📚 {selectedBooks.length} cuốn: {selectedBooks.map(b => b.title).join(", ")}</p>
+            <p className="text-muted-foreground">📅 Hạn trả: {format(dueDate, "dd/MM/yyyy")}</p>
+          </div>
+        )}
+
         <Button
           onClick={handleBorrow}
           className="w-full gap-2 text-base py-3"
           size="lg"
-          disabled={!selectedBook || !selectedPatron || isSubmitting}
+          disabled={selectedBooks.length === 0 || !selectedPatron || isSubmitting}
         >
           {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <BookOpen className="w-5 h-5" />}
-          Xử lý mượn sách
+          {selectedBooks.length > 1
+            ? `Xử lý mượn ${selectedBooks.length} sách`
+            : "Xử lý mượn sách"}
         </Button>
       </div>
     </div>

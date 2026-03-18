@@ -18,7 +18,6 @@ import LoginPage from "@/pages/LoginPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import BookManagement from "@/pages/admin/BookManagement";
 import BorrowManagement from "@/pages/admin/BorrowManagement";
-import ReturnBookPage from "@/pages/admin/ReturnBookPage";
 import BorrowListPage from "@/pages/admin/BorrowListPage";
 import FineManagement from "@/pages/admin/FineManagement";
 import OCRPage from "@/pages/OCRPage";
@@ -49,7 +48,6 @@ const AppRoutes = () => (
     <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
     <Route path="/admin/books" element={<AdminRoute><BookManagement /></AdminRoute>} />
     <Route path="/admin/borrow" element={<AdminRoute><BorrowManagement /></AdminRoute>} />
-    <Route path="/admin/return" element={<AdminRoute><ReturnBookPage /></AdminRoute>} />
     <Route path="/admin/borrow-list" element={<AdminRoute><BorrowListPage /></AdminRoute>} />
     <Route path="/admin/fines" element={<AdminRoute><FineManagement /></AdminRoute>} />
     <Route path="/admin/ocr" element={<AdminRoute><OCRPage /></AdminRoute>} />
