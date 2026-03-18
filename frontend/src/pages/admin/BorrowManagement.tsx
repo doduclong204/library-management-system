@@ -2,9 +2,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { borrowApi, patronApi, bookApi } from "@/services/apiServices";
 import type { PatronSearchResult, BorrowRequest, BorrowResponse, Book } from "@/types";
+import { BrowserMultiFormatReader } from "@zxing/browser";
+import { NotFoundException } from "@zxing/library";
 import {
   BookOpen, ScanLine, Camera, CameraOff, CheckCircle,
-  User, Calendar as CalendarIcon, UserPlus, Mail, Loader2
+  User, Calendar as CalendarIcon, UserPlus, Mail, Loader2, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +37,8 @@ const BorrowManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const controlsRef = useRef<{ stop: () => void } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const patronSearchTimer = useRef<ReturnType<typeof setTimeout>>();
   const { toast } = useToast();
 
@@ -94,25 +97,56 @@ const BorrowManagement = () => {
     }, 400);
   }, [emailQuery]);
 
+  const stopCamera = () => {
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+    setCameraOn(false);
+  };
+
   const toggleCamera = async () => {
-    if (cameraOn) {
-      streamRef.current?.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-      setCameraOn(false);
-      return;
-    }
+    if (cameraOn) { stopCamera(); return; }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      const reader = new BrowserMultiFormatReader();
       setCameraOn(true);
+      const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+      const deviceId = devices.find(d => d.label.toLowerCase().includes("back"))?.deviceId
+        ?? devices[0]?.deviceId;
+      if (!videoRef.current) return;
+      const controls = await reader.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
+        if (result) {
+          stopCamera();
+          setBookQuery(result.getText());
+          setSelectedBook(null);
+          toast({ title: "Đã quét barcode!", description: result.getText() });
+        }
+        if (err && !(err instanceof NotFoundException)) console.error(err);
+      });
+      controlsRef.current = controls;
     } catch {
+      stopCamera();
       toast({ title: "Không thể mở camera", variant: "destructive" });
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const reader = new BrowserMultiFormatReader();
+      const imgUrl = URL.createObjectURL(file);
+      const result = await reader.decodeFromImageUrl(imgUrl);
+      URL.revokeObjectURL(imgUrl);
+      setBookQuery(result.getText());
+      setSelectedBook(null);
+      toast({ title: "Đã đọc barcode!", description: result.getText() });
+    } catch {
+      toast({ title: "Không đọc được barcode", variant: "destructive" });
+    }
+    e.target.value = "";
+  };
+
   useEffect(() => {
-    return () => { streamRef.current?.getTracks().forEach(t => t.stop()); };
+    return () => { stopCamera(); };
   }, []);
 
   const handleBorrow = async () => {
@@ -138,7 +172,6 @@ const BorrowManagement = () => {
         description: `${result.bookTitle} → ${result.userName}. Hạn trả: ${format(dueDate, "dd/MM/yyyy")}`,
       });
 
-      // Reload lại danh sách sách để cập nhật available_copies
       await fetchBooks();
 
       setSelectedBook(null); setBookQuery("");
@@ -169,18 +202,30 @@ const BorrowManagement = () => {
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <ScanLine className="w-4 h-4 text-primary" /> Quét Barcode / ISBN
           </h3>
-          <Button variant="outline" size="sm" onClick={toggleCamera} className="gap-1.5">
-            {cameraOn
-              ? <><CameraOff className="w-4 h-4" /> Tắt camera</>
-              : <><Camera className="w-4 h-4" /> Bật camera</>}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
+              <Upload className="w-4 h-4" /> Tải ảnh
+            </Button>
+            <Button variant="outline" size="sm" onClick={toggleCamera} className="gap-1.5">
+              {cameraOn
+                ? <><CameraOff className="w-4 h-4" /> Tắt camera</>
+                : <><Camera className="w-4 h-4" /> Bật camera</>}
+            </Button>
+          </div>
         </div>
+
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
         {cameraOn && (
           <div className="relative mb-4 rounded-lg overflow-hidden bg-foreground/5 aspect-video max-w-md">
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-48 h-32 border-2 border-primary/60 rounded-lg animate-pulse" />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-48 h-32 border-2 border-primary/80 rounded-lg">
+                <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary rounded-tl" />
+                <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-primary rounded-tr" />
+                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-primary rounded-bl" />
+                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-primary rounded-br" />
+              </div>
             </div>
           </div>
         )}
