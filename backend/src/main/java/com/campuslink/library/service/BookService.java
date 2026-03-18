@@ -6,7 +6,9 @@ import com.campuslink.library.dto.response.book.BookResponse;
 
 public interface BookService {
 
-    ApiPagination<BookResponse> getBooks(int page, int size, String keyword, String genre);
+    ApiPagination<BookResponse> getBooks(int page, int size, String keyword, String genre,
+                                         String authorName, Integer yearFrom, Integer yearTo,
+                                         String sortBy);
 
     BookResponse getBookById(Integer id);
 
