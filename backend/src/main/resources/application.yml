@@ -54,7 +54,15 @@ upload:
     uri: file:///E:/Campuslink/library-management-system/upload/
     image-uri: file:///E:/Campuslink/library-management-system/upload/images/
     video-uri: file:///E:/Campuslink/library-management-system/upload/videos/
+    ocr-uri: file:///D:/library-management-system/upload/ocr/
 
 app:
   reminder:
     days-before: 2
+ocr-uri: file:///D:/library-management-system/upload/ocr/
+
+
+tesseract:
+  data:
+    path: C:/Program Files/Tesseract-OCR/tessdata
+  language: vie+eng

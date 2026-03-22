@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/books/**").permitAll()
                         .requestMatchers("/borrow-records/**").permitAll()
                         .requestMatchers("/patrons/**").permitAll()
+                        .requestMatchers("/ocr/**").permitAll()  // ← dòng mới
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
