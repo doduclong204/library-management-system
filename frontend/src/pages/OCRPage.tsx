@@ -1,232 +1,367 @@
-import { useState } from "react";
-import { DIGITAL_BOOKS } from "@/data/mockBooks";
-import { ScanLine, Upload, FileText, Plus, Eye, Edit, Trash2, Search, CheckCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+// src/pages/admin/OcrPage.tsx
 
-type DigitalBook = typeof DIGITAL_BOOKS[0];
+import { useState, useRef, useCallback, DragEvent, ChangeEvent } from "react";
+import { Eye, Trash2, Upload, Search, RefreshCw, X, FileText } from "lucide-react";
+import { useOcr } from "../hooks/useOcr";
+import { ocrService } from "../services/ocrService";
+import { DigitalBookResponse } from "../types/digitalBook";
 
-const OCRPage = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
-  const [processing, setProcessing] = useState(false);
-  const [digitalBooks, setDigitalBooks] = useState<DigitalBook[]>(DIGITAL_BOOKS);
-  const [viewBook, setViewBook] = useState<DigitalBook | null>(null);
-  const [deleteBook, setDeleteBook] = useState<DigitalBook | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const { toast } = useToast();
+// ─── helpers ──────────────────────────────────────────────────────────────────
+function fmtDate(iso: string): string {
+  if (!iso) return "—";
+  return iso.split("T")[0];
+}
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+function truncate(str: string, n = 80): string {
+  if (!str) return "—";
+  return str.length > n ? str.slice(0, n) + "…" : str;
+}
+
+function accuracyColor(pct: number): string {
+  if (pct >= 90) return "bg-green-500";
+  if (pct >= 75) return "bg-blue-500";
+  if (pct >= 60) return "bg-yellow-500";
+  return "bg-red-500";
+}
+
+// ─── AccuracyBadge ────────────────────────────────────────────────────────────
+function AccuracyBadge({ pct }: { pct: number }) {
+  return (
+    <span className={`${accuracyColor(pct)} text-white text-xs font-semibold px-3 py-1 rounded-full`}>
+      {pct}%
+    </span>
+  );
+}
+
+// ─── Modal xem nội dung ───────────────────────────────────────────────────────
+function ModalView({
+  book,
+  onClose,
+}: {
+  book: DigitalBookResponse | null;
+  onClose: () => void;
+}) {
+  if (!book) return null;
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-6 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">{book.title}</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {book.author || "Không rõ tác giả"} · OCR {fmtDate(book.ocrDate)} ·{" "}
+              <AccuracyBadge pct={book.accuracyPercent} />
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors ml-4"
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        {/* Nội dung */}
+        <div className="overflow-y-auto p-6">
+          <pre className="bg-gray-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap break-words text-gray-800 font-mono">
+            {book.extractedText || "Không có nội dung."}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── OcrPage ──────────────────────────────────────────────────────────────────
+export default function OcrPage() {
+  const { books, loading, uploading, error, upload, remove, search } = useOcr();
+
+  // Upload form state
+  const [dragOver, setDragOver]   = useState(false);
+  const [file, setFile]           = useState<File | null>(null);
+  const [preview, setPreview]     = useState<string | null>(null);
+  const [title, setTitle]         = useState("");
+  const [author, setAuthor]       = useState("");
+  const [formError, setFormError] = useState("");
+  const fileInputRef              = useRef<HTMLInputElement>(null);
+
+  // Table state
+  const [keyword, setKeyword]     = useState("");
+  const [viewBook, setViewBook]   = useState<DigitalBookResponse | null>(null);
+
+  // ── file pick ──
+  const pickFile = useCallback((f: File) => {
+    setFile(f);
+    setFormError("");
+    const reader = new FileReader();
+    reader.onload = (e) => setPreview(e.target?.result as string);
+    reader.readAsDataURL(f);
+    if (!title) {
+      setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[_-]/g, " "));
+    }
+  }, [title]);
+
+  const onDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f) pickFile(f);
+  }, [pickFile]);
+
+  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) {
-      setFile(f);
-      setResult(null);
-      const reader = new FileReader();
-      reader.onload = () => setPreview(reader.result as string);
-      reader.readAsDataURL(f);
+    if (f) pickFile(f);
+  };
+
+  // ── submit ──
+  const handleUpload = async () => {
+    if (!file)         return setFormError("Vui lòng chọn file ảnh.");
+    if (!title.trim()) return setFormError("Vui lòng nhập tiêu đề sách.");
+    setFormError("");
+
+    const ok = await upload(file, title.trim(), author.trim());
+    if (ok) {
+      setFile(null);
+      setPreview(null);
+      setTitle("");
+      setAuthor("");
     }
   };
 
-  const handleProcess = () => {
-    if (!file) return;
-    setProcessing(true);
-    setTimeout(() => {
-      setResult(
-        `[Kết quả OCR — Mô phỏng]\n\nTrang trích từ "Khảo luận về Khoa học Thư viện" (1887)\n\n` +
-        `"Việc phân loại sách cẩn thận là nền tảng mà trên đó một thư viện lớn được xây dựng. ` +
-        `Mỗi cuốn sách phải được ghi chép chính xác — tiêu đề, tác giả, ngày xuất bản và tình trạng — ` +
-        `để các học giả của các thế hệ tương lai có thể tìm thấy trong những bức tường này kiến thức mà họ tìm kiếm."\n\n` +
-        `— Trích xuất từ: ${file.name}`
-      );
-      setProcessing(false);
-      toast({ title: "OCR hoàn tất", description: "Văn bản đã được trích xuất từ hình ảnh." });
-    }, 2000);
+  // ── view detail ──
+  const handleView = async (id: number) => {
+    try {
+      const detail = await ocrService.getById(id);
+      setViewBook(detail);
+    } catch {
+      alert("Không thể tải nội dung.");
+    }
   };
 
-  const handleAddToLibrary = () => {
-    if (!result) return;
-    const newBook: DigitalBook = {
-      id: `d${digitalBooks.length + 1}`,
-      title: `Tài liệu OCR - ${file?.name || "unknown"}`,
-      author: "Chưa xác định",
-      year: new Date().getFullYear(),
-      ocrDate: new Date().toISOString().split("T")[0],
-      accuracy: Math.floor(Math.random() * 10) + 88,
-      ocrText: result,
-    };
-    setDigitalBooks([newBook, ...digitalBooks]);
-    setResult(null); setFile(null); setPreview(null);
-    toast({ title: "Đã thêm vào thư viện số", description: "Sách đã được lưu vào kho sách số." });
+  // ── delete ──
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Xác nhận xoá sách số này?")) return;
+    await remove(id);
   };
 
-  const handleDeleteDigital = () => {
-    if (!deleteBook) return;
-    setDigitalBooks(digitalBooks.filter(b => b.id !== deleteBook.id));
-    setDeleteBook(null);
-    toast({ title: "Đã xóa", description: "Sách số đã được xóa." });
+  // ── search ──
+  const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
+    const kw = e.target.value;
+    setKeyword(kw);
+    search(kw);
   };
 
-  const filteredDigital = digitalBooks.filter(b => {
-    const q = searchQuery.toLowerCase();
-    return !q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.ocrText.toLowerCase().includes(q);
-  });
-
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="page-header flex items-center gap-2">
-          <ScanLine className="w-6 h-6 text-primary" /> OCR Upload
-        </h1>
-        <p className="text-muted-foreground mt-1">Tải lên hình ảnh sách cổ để trích xuất văn bản có thể tìm kiếm.</p>
+    <div className="p-8 max-w-6xl mx-auto">
+
+      {/* ── Page header ── */}
+      <div className="flex items-center gap-3 mb-1">
+        <RefreshCw className="text-blue-500" size={26} />
+        <h1 className="text-2xl font-bold text-gray-900">OCR Upload</h1>
       </div>
+      <p className="text-gray-500 mb-8">
+        Tải lên hình ảnh sách cố để trích xuất văn bản có thể tìm kiếm.
+      </p>
 
-      {/* Upload area */}
-      <div className="glass-card p-6 max-w-2xl">
-        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-          <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" id="ocr-upload" />
-          <label htmlFor="ocr-upload" className="cursor-pointer space-y-3 block">
-            {preview ? (
-              <img src={preview} alt="Upload preview" className="max-h-64 mx-auto rounded-lg object-contain" />
-            ) : (
-              <>
-                <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Nhấp để tải lên trang sách đã quét</p>
-                <p className="text-xs text-muted-foreground">Hỗ trợ JPG, PNG, TIFF</p>
-              </>
-            )}
-          </label>
-        </div>
+      {/* ── Upload card ── */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
 
-        {file && (
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <FileText className="w-4 h-4" /> {file.name}
-            </p>
-            <Button onClick={handleProcess} disabled={processing} className="gap-2">
-              <ScanLine className="w-4 h-4" />
-              {processing ? "Đang xử lý…" : "Trích xuất văn bản"}
-            </Button>
-          </div>
-        )}
+        {/* Drop zone */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          onClick={() => !file && fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer mb-6
+            ${dragOver
+              ? "border-blue-400 bg-blue-50"
+              : "border-gray-300 bg-gray-50 hover:border-blue-300 hover:bg-blue-50/50"
+            }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/tiff"
+            className="hidden"
+            onChange={onFileChange}
+          />
 
-        {result && (
-          <div className="mt-6 space-y-4">
-            <div className="p-5 bg-muted rounded-lg">
-              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary" /> Văn bản đã trích xuất
-              </h3>
-              <pre className="text-sm whitespace-pre-wrap leading-relaxed">{result}</pre>
+          {preview ? (
+            <div className="relative inline-block">
+              <img
+                src={preview}
+                alt="preview"
+                className="max-h-48 max-w-full rounded-lg object-contain mx-auto"
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); setFile(null); setPreview(null); }}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+              >
+                <X size={12} />
+              </button>
             </div>
-            <Button onClick={handleAddToLibrary} variant="secondary" className="gap-2">
-              <Plus className="w-4 h-4" /> Thêm vào thư viện sách số
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Digital Books List */}
-      <div>
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <FileText className="w-5 h-5 text-secondary" /> Kho sách số ({digitalBooks.length})
-          </h2>
-          <div className="relative max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Tìm sách số..." className="pl-10" />
-          </div>
-        </div>
-
-        <div className="glass-card overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tiêu đề</TableHead>
-                <TableHead className="hidden sm:table-cell">Tác giả</TableHead>
-                <TableHead className="hidden md:table-cell">Nội dung trích</TableHead>
-                <TableHead>Ngày OCR</TableHead>
-                <TableHead>Độ chính xác</TableHead>
-                <TableHead className="text-right">Hành động</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDigital.map(book => (
-                <TableRow key={book.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-sm">{book.title}</p>
-                      <p className="text-xs text-muted-foreground sm:hidden">{book.author}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">{book.author}</TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <p className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]">{book.ocrText}</p>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{book.ocrDate}</TableCell>
-                  <TableCell>
-                    <Badge variant={book.accuracy >= 90 ? "default" : "secondary"} className="text-xs">
-                      {book.accuracy}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => setViewBook(book)} title="Xem"><Eye className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteBook(book)} title="Xóa" className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {filteredDigital.length === 0 && (
-            <p className="text-center py-8 text-sm text-muted-foreground">Không tìm thấy sách số.</p>
+          ) : (
+            <>
+              <Upload className="mx-auto text-gray-400 mb-3" size={36} />
+              <p className="text-gray-600 font-medium">Nhấp để tải lên trang sách đã quét</p>
+              <p className="text-gray-400 text-sm mt-1">Hỗ trợ JPG, PNG, TIFF</p>
+            </>
           )}
         </div>
+
+        {/* Form fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Tiêu đề sách <span className="text-red-500">*</span>
+            </label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Nhập tiêu đề..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Tác giả</label>
+            <input
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              placeholder="Nhập tên tác giả..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {(formError || error) && (
+          <p className="text-red-500 text-sm mb-4">{formError || error}</p>
+        )}
+
+        <button
+          onClick={handleUpload}
+          disabled={uploading || !file}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors
+            ${uploading || !file
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
+            }`}
+        >
+          <Upload size={16} />
+          {uploading ? "Đang xử lý OCR…" : "Tải lên & OCR"}
+        </button>
       </div>
 
-      {/* View dialog */}
-      <Dialog open={!!viewBook} onOpenChange={open => { if (!open) setViewBook(null); }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{viewBook?.title}</DialogTitle>
-            <DialogDescription>{viewBook?.author} · {viewBook?.year} · Độ chính xác: {viewBook?.accuracy}%</DialogDescription>
-          </DialogHeader>
-          <div className="bg-muted/50 rounded-md p-5 border border-border">
-            <p className="text-xs text-muted-foreground uppercase font-semibold mb-2 flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5" /> Nội dung OCR
-            </p>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{viewBook?.ocrText}</p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* ── Book list ── */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
 
-      {/* Delete confirm */}
-      <AlertDialog open={!!deleteBook} onOpenChange={open => { if (!open) setDeleteBook(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Xóa sách số</AlertDialogTitle>
-            <AlertDialogDescription>Bạn có chắc muốn xóa "{deleteBook?.title}"?</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteDigital} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <FileText size={20} className="text-gray-600" />
+            Kho sách số
+            <span className="text-gray-400 font-normal text-base">({books.length})</span>
+          </h2>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+            <input
+              value={keyword}
+              onChange={handleSearch}
+              placeholder="Tìm sách số..."
+              className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-56
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-gray-500 text-left">
+                {["Tiêu đề", "Tác giả", "Nội dung trích", "Ngày OCR", "Độ chính xác", "Hành động"].map(
+                  (h) => (
+                    <th key={h} className="px-4 py-3 font-semibold text-xs uppercase tracking-wide
+                                           border-b border-gray-100 first:rounded-tl-lg last:rounded-tr-lg">
+                      {h}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-gray-400">
+                    <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
+                    Đang tải…
+                  </td>
+                </tr>
+              ) : books.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-gray-400">
+                    Chưa có sách số nào.
+                  </td>
+                </tr>
+              ) : (
+                books.map((b) => (
+                  <tr
+                    key={b.id}
+                    className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-4 py-3 font-semibold text-gray-900 max-w-[180px]">
+                      {b.title}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {b.author || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 max-w-[260px]">
+                      {truncate(b.extractedText)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {fmtDate(b.ocrDate)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <AccuracyBadge pct={b.accuracyPercent ?? 0} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleView(b.id)}
+                          title="Xem nội dung"
+                          className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(b.id)}
+                          title="Xoá"
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal */}
+      <ModalView book={viewBook} onClose={() => setViewBook(null)} />
     </div>
   );
-};
-
-export default OCRPage;
+}
