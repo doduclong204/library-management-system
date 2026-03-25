@@ -3,6 +3,8 @@ package com.campuslink.library.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "digital_books")
@@ -21,23 +23,19 @@ public class DigitalBook {
 
     private String author;
 
-    @Column(columnDefinition = "TEXT")
-    private String extractedText;
-
-    @Column(name = "image_path")
-    private String imagePath;
-
     @Column(name = "ocr_date")
     private LocalDateTime ocrDate;
-
-    @Column(name = "accuracy_percent")
-    private Integer accuracyPercent;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @OneToMany(mappedBy = "digitalBook", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<DigitalBookPage> pages = new ArrayList<>();
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (ocrDate == null) ocrDate = LocalDateTime.now();
     }
 }

@@ -1,5 +1,3 @@
-// src/hooks/useOcr.ts
-
 import { useState, useEffect, useCallback } from "react";
 import { ocrService } from "../services/ocrService";
 import { DigitalBookResponse } from "../types/digitalBook";
@@ -43,15 +41,18 @@ export function useOcr() {
   }, []);
 
   // ── Upload + OCR ────────────────────────────────
+  // SỬA TẠI ĐÂY: Đổi 'file: File' thành 'files: File[]' để khớp với Service
   const upload = useCallback(
-    async (file: File, title: string, author: string): Promise<boolean> => {
+    async (files: File[], title: string, author: string): Promise<boolean> => {
       setUploading(true);
       setError(null);
       try {
-        const newBook = await ocrService.upload(file, title, author);
+        // Truyền mảng files vào service
+        const newBook = await ocrService.upload(files, title, author);
         setBooks((prev) => [newBook, ...prev]);
         return true;
-      } catch {
+      } catch (err) {
+        console.error("Upload error:", err);
         setError("Tải lên thất bại. Vui lòng thử lại.");
         return false;
       } finally {

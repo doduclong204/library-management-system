@@ -3,17 +3,21 @@ package com.campuslink.library.service;
 import com.campuslink.library.dto.request.DigitalBookRequest;
 import com.campuslink.library.dto.response.DigitalBookResponse;
 import com.campuslink.library.entity.DigitalBook;
+import com.campuslink.library.entity.DigitalBookPage;
+import com.campuslink.library.mapper.DigitalBookMapper;
 import com.campuslink.library.repository.DigitalBookRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,95 +29,77 @@ public class DigitalBookService {
 
     private final DigitalBookRepository repository;
     private final ClaudeOcrService ocrService;
+    private final DigitalBookMapper mapper;
 
-    // Lấy path từ upload.file.ocr-uri trong application.yml
-    // Ví dụ: file:///E:/Campuslink/.../upload/ocr/
     @Value("${upload.file.ocr-uri}")
     private String ocrUri;
 
-    // ──────────────────────────────────────────
-    // Upload ảnh + OCR
-    // ──────────────────────────────────────────
-    public DigitalBookResponse uploadAndOcr(MultipartFile file, DigitalBookRequest request) throws IOException {
-        // 1. Dùng URI.create để parse đúng trên cả Windows lẫn Linux
-        //    file:///E:/... → E:\...  (Windows)
-        //    file:///home/... → /home/...  (Linux)
+    @Transactional
+    public DigitalBookResponse uploadAndOcr(MultipartFile[] files, DigitalBookRequest request) throws IOException {
         Path dir = Paths.get(URI.create(ocrUri));
         Files.createDirectories(dir);
 
-        String ext = getExtension(file.getOriginalFilename());
-        String fileName = UUID.randomUUID() + "." + ext;
-        Path savedPath = dir.resolve(fileName);
-        Files.write(savedPath, file.getBytes());
-
-        // 2. Gọi Claude OCR
-        String mimeType = resolveMimeType(ext);
-        ClaudeOcrService.OcrResult result = ocrService.extractText(file.getBytes(), mimeType);
-
-        // 3. Lưu DB
         DigitalBook book = DigitalBook.builder()
                 .title(request.getTitle())
                 .author(request.getAuthor())
-                .extractedText(result.text())
-                .imagePath(savedPath.toString())
                 .ocrDate(LocalDateTime.now())
-                .accuracyPercent(result.accuracy())
+                .pages(new ArrayList<>())
                 .build();
 
-        DigitalBook saved = repository.save(book);
-        log.info("OCR xong: '{}' – độ chính xác {}%", request.getTitle(), result.accuracy());
+        int pageNum = 1;
+        for (MultipartFile file : files) {
+            String ext = getExtension(file.getOriginalFilename());
+            String fileName = UUID.randomUUID() + "." + ext;
+            Path savedPath = dir.resolve(fileName);
+            Files.write(savedPath, file.getBytes());
 
-        return toResponse(saved);
+            ClaudeOcrService.OcrResult result = ocrService.extractText(file.getBytes(), resolveMimeType(ext));
+
+            DigitalBookPage page = DigitalBookPage.builder()
+                    .digitalBook(book)
+                    .pageNumber(pageNum++)
+                    .extractedText(result.text())
+                    .imagePath(savedPath.toString())
+                    .accuracyPercent(result.accuracy())
+                    .build();
+
+            book.getPages().add(page);
+        }
+
+        return mapper.toResponse(repository.save(book));
     }
 
-    // ──────────────────────────────────────────
-    // CRUD
-    // ──────────────────────────────────────────
     public List<DigitalBookResponse> getAll() {
         return repository.findAllByOrderByOcrDateDesc()
-                .stream().map(this::toResponse).collect(Collectors.toList());
+                .stream().map(mapper::toResponse).collect(Collectors.toList());
     }
 
     public DigitalBookResponse getById(Long id) {
         return repository.findById(id)
-                .map(this::toResponse)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sách số id=" + id));
+                .map(mapper::toResponse)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy id=" + id));
     }
 
     public List<DigitalBookResponse> search(String keyword) {
         return repository.searchByKeyword(keyword)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+                .stream().map(mapper::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional
     public void delete(Long id) {
         DigitalBook book = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sách số id=" + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy id=" + id));
 
-        // Xoá file ảnh nếu có
-        try {
-            if (book.getImagePath() != null) {
-                Files.deleteIfExists(Paths.get(book.getImagePath()));
+        for (DigitalBookPage page : book.getPages()) {
+            try {
+                if (page.getImagePath() != null) {
+                    Files.deleteIfExists(Paths.get(page.getImagePath()));
+                }
+            } catch (IOException e) {
+                log.warn("Lỗi xóa file: {}", e.getMessage());
             }
-        } catch (IOException e) {
-            log.warn("Không thể xoá file ảnh: {}", e.getMessage());
         }
-
-        repository.deleteById(id);
-    }
-
-    // ──────────────────────────────────────────
-    // Helpers
-    // ──────────────────────────────────────────
-    private DigitalBookResponse toResponse(DigitalBook b) {
-        return DigitalBookResponse.builder()
-                .id(b.getId())
-                .title(b.getTitle())
-                .author(b.getAuthor())
-                .extractedText(b.getExtractedText())
-                .imagePath(b.getImagePath())
-                .ocrDate(b.getOcrDate())
-                .accuracyPercent(b.getAccuracyPercent())
-                .build();
+        repository.delete(book);
     }
 
     private String getExtension(String filename) {
