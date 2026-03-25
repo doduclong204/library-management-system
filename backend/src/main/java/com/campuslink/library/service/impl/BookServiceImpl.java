@@ -10,6 +10,7 @@ import com.campuslink.library.exception.ErrorCode;
 import com.campuslink.library.mapper.BookMapper;
 import com.campuslink.library.repository.AuthorRepository;
 import com.campuslink.library.repository.BookRepository;
+import com.campuslink.library.repository.PatronRepository;
 import com.campuslink.library.service.BookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class BookServiceImpl implements BookService {
     private final BookRepository bookRepository;
     private final AuthorRepository authorRepository;
     private final BookMapper bookMapper;
+    private final PatronRepository patronRepository;
 
     @Override
     public ApiPagination<BookResponse> getBooks(int page, int size, String keyword, String genre,
@@ -61,6 +63,7 @@ public class BookServiceImpl implements BookService {
                 .pageSize(size)
                 .pages(bookPage.getTotalPages())
                 .total(bookPage.getTotalElements())
+                .totalPatrons(patronRepository.count())
                 .build();
 
         return ApiPagination.<BookResponse>builder()

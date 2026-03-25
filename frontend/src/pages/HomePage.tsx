@@ -1,27 +1,41 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MOCK_BOOKS } from "@/data/mockBooks";
+import { useQuery } from "@tanstack/react-query";
+import { bookApi } from "@/services/apiServices";
 import BookCard from "@/components/BookCard";
-import { Search, BookOpen, Users, Clock, Sparkles } from "lucide-react";
+import { Search, BookOpen, Users, Sparkles, Clock, Loader2 } from "lucide-react";
 import type { Book } from "@/types";
 
 const HomePage = () => {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
 
-  const featuredBooks = MOCK_BOOKS.filter(b => b.available).slice(0, 8);
-  const totalBooks = MOCK_BOOKS.length;
-  const availableBooks = MOCK_BOOKS.filter(b => b.available).length;
+  // Lấy toàn bộ sách từ API — lấy trang đầu, pageSize lớn để hiển thị
+  const { data, isLoading } = useQuery({
+    queryKey: ["books-home"],
+    queryFn: async () => {
+      const res = await bookApi.getAll({ page: 1, size: 20 });
+      return res.data.data; // { meta, result }
+    },
+  });
+
+  const books: Book[] = data?.result ?? [];
+
+  // Sách nổi bật: còn sách để mượn
+  const featuredBooks = books.filter(b => (b.available_copies ?? 0) > 0).slice(0, 8);
+
+  // Đang được mượn nhiều: hết sách
+  const borrowedBooks = books.filter(b => (b.available_copies ?? 0) === 0).slice(0, 4);
+
+  // Thống kê
+  const totalBooks = data?.meta?.total ?? 0;
+  const availableBooks = books.filter(b => (b.available_copies ?? 0) > 0).length;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
       navigate(`/search?q=${encodeURIComponent(query.trim())}`);
     }
-  };
-
-  const handleBookClick = (book: Book) => {
-    navigate(`/books/${book.id}`);
   };
 
   return (
@@ -46,7 +60,7 @@ const HomePage = () => {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Tìm sách theo tên, tác giả, ISBN hoặc nội dung..."
+              placeholder="Tìm sách theo tên, tác giả, ISBN..."
               className="w-full pl-12 pr-28 py-4 rounded-xl border border-input bg-card text-base placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm"
             />
             <button
@@ -73,41 +87,60 @@ const HomePage = () => {
         </div>
         <div className="text-center p-4 glass-card">
           <Users className="w-5 h-5 text-primary mx-auto mb-1" />
-          <p className="text-2xl font-bold">500+</p>
+          <p className="text-2xl font-bold">{data?.meta?.totalPatrons || 0}</p>
           <p className="text-xs text-muted-foreground">Độc giả</p>
         </div>
       </div>
 
-      {/* Featured books */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Sách nổi bật</h2>
-          <button
-            onClick={() => navigate("/search")}
-            className="text-sm text-primary hover:underline font-medium"
-          >
-            Xem tất cả →
-          </button>
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex justify-center py-10">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {featuredBooks.map(book => (
-            <BookCard key={book.id} book={book} onClick={handleBookClick} />
-          ))}
-        </div>
-      </div>
+      )}
 
-      {/* Recently borrowed / popular */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-muted-foreground" />
-          Đang được mượn nhiều
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {MOCK_BOOKS.filter(b => !b.available).slice(0, 4).map(book => (
-            <BookCard key={book.id} book={book} onClick={handleBookClick} />
-          ))}
+      {/* Sách nổi bật */}
+      {!isLoading && featuredBooks.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Sách nổi bật</h2>
+            <button
+              onClick={() => navigate("/search")}
+              className="text-sm text-primary hover:underline font-medium"
+            >
+              Xem tất cả →
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {featuredBooks.map(book => (
+              <BookCard
+                key={book.id}
+                book={book}
+                onClick={(b) => navigate(`/books/${b.id}`)}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Đang được mượn nhiều */}
+      {!isLoading && borrowedBooks.length > 0 && (
+        <div>
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-muted-foreground" />
+            Đang được mượn nhiều
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {borrowedBooks.map(book => (
+              <BookCard
+                key={book.id}
+                book={book}
+                onClick={(b) => navigate(`/books/${b.id}`)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

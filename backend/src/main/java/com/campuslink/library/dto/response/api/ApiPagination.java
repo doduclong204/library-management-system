@@ -32,5 +32,6 @@ public class ApiPagination<T> {
         int pageSize;
         int pages;
         long total;
+        long totalPatrons;
     }
 }

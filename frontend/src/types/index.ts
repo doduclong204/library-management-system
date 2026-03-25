@@ -64,6 +64,7 @@ export interface ApiPagination<T> {
     pageSize: number;
     pages: number;
     total: number;
+    totalPatrons?: number; // thêm trường này nếu backend trả về
   };
   result: T[];
 }

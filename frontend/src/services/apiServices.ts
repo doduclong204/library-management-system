@@ -1,10 +1,27 @@
 import api from "./api";
-import type { ApiResponse, ApiPagination, Book, BorrowRecord, BorrowRequest, BorrowResponse, Fine, User, BookRequest, PatronSearchResult, BookCopy } from "@/types";
+import type {
+  ApiResponse, ApiPagination, Book, BorrowRecord, BorrowRequest,
+  BorrowResponse, Fine, User, BookRequest, PatronSearchResult, BookCopy
+} from "@/types";
+
+// Tham số phân trang + filter sách — khớp với BookController.java
+export interface BookQueryParams {
+  page?: number;       // số trang, bắt đầu từ 1 (backend: @RequestParam defaultValue="1")
+  size?: number;       // số sách mỗi trang (backend: @RequestParam defaultValue="10")
+  keyword?: string;    // tìm theo title / isbn / tác giả / fullText
+  genre?: string;      // lọc theo thể loại
+  authorName?: string; // lọc theo tên tác giả
+  yearFrom?: number;   // lọc năm xuất bản từ
+  yearTo?: number;     // lọc năm xuất bản đến
+  sortBy?: string;     // sắp xếp
+}
 
 export const bookApi = {
-  getAll: (params?: Record<string, string | number>) =>
+  // GET /books?page=1&size=10&keyword=...&genre=...
+  getAll: (params?: BookQueryParams) =>
     api.get<ApiResponse<ApiPagination<Book>>>("/books", { params }),
 
+  // GET /books/{id}
   getById: (id: number) =>
     api.get<ApiResponse<Book>>(`/books/${id}`),
 
