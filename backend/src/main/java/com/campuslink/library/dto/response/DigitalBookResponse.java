@@ -2,6 +2,7 @@ package com.campuslink.library.dto.response;
 
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -11,8 +12,17 @@ public class DigitalBookResponse {
     private Long id;
     private String title;
     private String author;
-    private String extractedText;
-    private String imagePath;
     private LocalDateTime ocrDate;
-    private Integer accuracyPercent;
+    private List<PageDto> pages;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PageDto {
+        private Integer pageNumber;
+        private String extractedText;
+        private String imagePath;
+        private Integer accuracyPercent;
+    }
 }

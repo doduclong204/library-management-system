@@ -11,10 +11,10 @@ import java.util.List;
 @Repository
 public interface DigitalBookRepository extends JpaRepository<DigitalBook, Long> {
 
-    @Query("SELECT d FROM DigitalBook d WHERE " +
+    @Query("SELECT DISTINCT d FROM DigitalBook d LEFT JOIN d.pages p WHERE " +
             "LOWER(d.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(d.author) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(d.extractedText) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+            "LOWER(p.extractedText) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<DigitalBook> searchByKeyword(@Param("keyword") String keyword);
 
     List<DigitalBook> findAllByOrderByOcrDateDesc();
