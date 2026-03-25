@@ -16,7 +16,6 @@ public class DataInitializer {
 
     @PostConstruct
     public void init() {
-        // Chỉ seed nếu chưa có tài khoản nào
         if (librarianRepository.count() == 0) {
             Librarian testLibrarian = Librarian.builder()
                     .username("thuthu")
