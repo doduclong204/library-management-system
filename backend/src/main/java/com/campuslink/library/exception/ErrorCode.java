@@ -11,6 +11,7 @@ public enum ErrorCode {
     // COMMON
     UNCATEGORIZED_EXCEPTION(500, "Lỗi không xác định", HttpStatus.INTERNAL_SERVER_ERROR),
     INVALID_KEY(400, "Khóa không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVALID_REQUEST(400, "Yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // AUTHENTICATION
     UNAUTHENTICATED(401, "Chưa xác thực", HttpStatus.UNAUTHORIZED),

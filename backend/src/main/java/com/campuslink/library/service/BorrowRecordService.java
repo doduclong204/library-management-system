@@ -91,6 +91,7 @@ public class BorrowRecordService {
 
         record.setReturnDate(returnDate);
         record.setFineAmount(fineAmount);
+        record.setFinePaid(false);
         record.setStatus(BorrowStatus.returned);
         borrowRecordRepository.save(record);
 
@@ -164,6 +165,7 @@ public class BorrowRecordService {
             response.setOverdueDays(overdueDays);
             response.setOverdue(true);
             response.setEstimatedFine(record.getFineAmount());
+            response.setPaymentCode(record.getPaymentCode());
             return response;
         }).toList();
     }
@@ -180,6 +182,7 @@ public class BorrowRecordService {
             response.setOverdueDays(overdueDays);
             response.setOverdue(true);
             response.setEstimatedFine(record.getFineAmount());
+            response.setPaymentCode(record.getPaymentCode());
             return response;
         }).toList();
     }

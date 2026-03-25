@@ -4,49 +4,66 @@ import { borrowRecordApi } from "@/services/borrowRecordService";
 import { paymentApi, type CreatePaymentResponse } from "@/services/paymentApi";
 import { useToast } from "@/hooks/use-toast";
 import {
-  DollarSign, AlertTriangle, CheckCircle, Search,
-  Loader2, QrCode, X,
+  DollarSign,
+  AlertTriangle,
+  CheckCircle,
+  Search,
+  Loader2,
+  QrCode,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 
-const FINE_PER_DAY = 5000;
-
-// ─── Format tiền VND ────────────────────────────────────────────
 const vnd = (amount: number) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+    amount,
+  );
 
-// ─── PaymentModal ───────────────────────────────────────────────
-// Component hiển thị QR VietQR và nút xác nhận thanh toán
 interface PaymentModalProps {
-  borrowRecordId: number;       // ID borrow_record cần thanh toán
-  onClose: () => void;           // Đóng modal
-  onConfirmed: () => void;        // Callback khi xác nhận xong
+  borrowRecordId?: number;
+  borrowRecordIds?: number[];
+  onClose: () => void;
+  onConfirmed: () => void;
 }
 
-const PaymentModal = ({ borrowRecordId, onClose, onConfirmed }: PaymentModalProps) => {
+const PaymentModal = ({
+  borrowRecordId,
+  borrowRecordIds,
+  onClose,
+  onConfirmed,
+}: PaymentModalProps) => {
   const { toast } = useToast();
-
-  // Bước hiện tại: loading → showQR → confirming → done
   const [step, setStep] = useState<"loading" | "showQR" | "confirming" | "done">("loading");
   const [qrData, setQrData] = useState<CreatePaymentResponse | null>(null);
 
-  // Gọi API tạo QR ngay khi modal mở
-  // TanStack Query v5 đã bỏ onSuccess/onError trong useQuery → dùng useEffect thay thế
   const { data: qrResult, error: qrError } = useQuery({
-    queryKey: ["create-payment", borrowRecordId],
+    queryKey: ["create-payment", borrowRecordId, borrowRecordIds],
     queryFn: async () => {
-      const res = await paymentApi.create(borrowRecordId);
+      const res = await paymentApi.create({
+        borrowRecordId,
+        borrowRecordIds,
+      });
       return res.data;
     },
-    enabled: step === "loading",
+    enabled:
+      step === "loading" &&
+      (!!borrowRecordId ||
+        (borrowRecordIds && borrowRecordIds.length > 0)),
     retry: false,
   });
 
@@ -61,20 +78,22 @@ const PaymentModal = ({ borrowRecordId, onClose, onConfirmed }: PaymentModalProp
     if (qrError && step === "loading") {
       toast({
         title: "Không thể tạo QR",
-        description: (qrError as any)?.response?.data?.message ?? "Vui lòng thử lại.",
+        description:
+          (qrError as any)?.response?.data?.message ?? "Vui lòng thử lại.",
         variant: "destructive",
       });
       onClose();
     }
   }, [qrError]);
 
-  // Mutation xác nhận đã thu tiền
-  // useMutation vẫn hỗ trợ onSuccess/onError trong v5
   const confirmMutation = useMutation({
     mutationFn: () => paymentApi.confirm(qrData!.paymentCode),
     onSuccess: () => {
       setStep("done");
-      toast({ title: "Thanh toán thành công!", description: "Khoản phạt đã được xác nhận." });
+      toast({
+        title: "Đã xác nhận thu tiền",
+        description: "Khoản phạt đã được ghi nhận.",
+      });
       onConfirmed();
     },
     onError: (err: any) => {
@@ -96,7 +115,6 @@ const PaymentModal = ({ borrowRecordId, onClose, onConfirmed }: PaymentModalProp
           </DialogTitle>
         </DialogHeader>
 
-        {/* ── Đang tải ── */}
         {step === "loading" && (
           <div className="flex flex-col items-center gap-3 py-10">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -104,46 +122,36 @@ const PaymentModal = ({ borrowRecordId, onClose, onConfirmed }: PaymentModalProp
           </div>
         )}
 
-        {/* ── Hiển thị QR ── */}
         {(step === "showQR" || step === "confirming") && qrData && (
           <div className="flex flex-col items-center gap-4">
-            {/* Ảnh QR từ VietQR — dùng trực tiếp bằng <img> */}
             <img
               src={qrData.qrUrl}
-              alt="QR VietQR thanh toán"
-              className="w-52 h-52 rounded-lg border border-border object-contain"
+              className="w-52 h-52 rounded-lg border object-contain"
             />
 
-            {/* Thông tin chuyển khoản */}
-            <div className="w-full rounded-lg bg-muted/50 px-4 py-3 space-y-2 text-sm">
+            <div className="w-full bg-muted/50 px-4 py-3 space-y-2 text-sm rounded-lg">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Ngân hàng</span>
-                <span className="font-medium">{qrData.bankName}</span>
+                <span>Ngân hàng</span>
+                <span>{qrData.bankName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Số tài khoản</span>
-                <span className="font-medium">{qrData.accountNumber}</span>
+                <span>Số tài khoản</span>
+                <span>{qrData.accountNumber}</span>
               </div>
-              <div className="flex justify-between border-t border-border pt-2 mt-1">
-                <span className="text-muted-foreground">Số tiền</span>
-                <span className="font-semibold text-destructive">{vnd(Number(qrData.amount))}</span>
+              <div className="flex justify-between border-t pt-2">
+                <span>Số tiền</span>
+                <span className="text-destructive font-semibold">
+                  {vnd(Number(qrData.amount))}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Nội dung CK</span>
-                <code className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded font-mono">
-                  {qrData.paymentCode}
-                </code>
+                <span>Nội dung</span>
+                <code>{qrData.paymentCode}</code>
               </div>
             </div>
 
-            <p className="text-xs text-center text-muted-foreground leading-relaxed">
-              Sau khi người dùng quét QR và chuyển khoản,
-              bấm <strong>Xác nhận</strong> để cập nhật trạng thái.
-            </p>
-
-            {/* Nút xác nhận */}
             <Button
-              className="w-full gap-2"
+              className="w-full"
               onClick={() => {
                 setStep("confirming");
                 confirmMutation.mutate();
@@ -155,24 +163,16 @@ const PaymentModal = ({ borrowRecordId, onClose, onConfirmed }: PaymentModalProp
               ) : (
                 <CheckCircle className="w-4 h-4" />
               )}
-              Xác nhận đã thanh toán
+              Xác nhận đã thu tiền
             </Button>
           </div>
         )}
 
-        {/* ── Thành công ── */}
         {step === "done" && (
           <div className="flex flex-col items-center gap-3 py-8">
-            <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center">
-              <CheckCircle className="w-8 h-8 text-success" />
-            </div>
-            <p className="font-medium text-success">Thanh toán thành công!</p>
-            <p className="text-sm text-muted-foreground text-center">
-              Khoản phạt đã được ghi nhận và cập nhật.
-            </p>
-            <Button variant="outline" className="mt-2" onClick={onClose}>
-              Đóng
-            </Button>
+            <CheckCircle className="w-8 h-8 text-success" />
+            <p className="text-success font-medium">Đã ghi nhận thanh toán</p>
+            <Button onClick={onClose}>Đóng</Button>
           </div>
         )}
       </DialogContent>
@@ -180,14 +180,13 @@ const PaymentModal = ({ borrowRecordId, onClose, onConfirmed }: PaymentModalProp
   );
 };
 
-// ─── FineManagement ─────────────────────────────────────────────
 const FineManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
-
-  // ID borrow_record đang mở modal thanh toán (null = đóng modal)
-  const [payingRecordId, setPayingRecordId] = useState<number | null>(null);
+  const [payingConfig, setPayingConfig] = useState<{
+  ids?: number[];
+} | null>(null);
 
   const { data: overdueRecords = [], isLoading: isLoadingOverdue } = useQuery({
     queryKey: ["overdue-fines"],
@@ -213,67 +212,102 @@ const FineManagement = () => {
     },
   });
 
-  // Refresh tất cả query sau khi xác nhận thanh toán thành công
   const handlePaymentConfirmed = () => {
-    setPayingRecordId(null);
+    setPayingConfig(null);
     queryClient.invalidateQueries({ queryKey: ["overdue-fines"] });
     queryClient.invalidateQueries({ queryKey: ["paid-fines"] });
     queryClient.invalidateQueries({ queryKey: ["paid-total"] });
   };
 
-  const unpaidFines = overdueRecords.map(r => ({
-    id: r.borrowRecordId,
-    userName: r.patronName,
-    studentId: r.studentId,
-    bookTitle: r.bookTitle,
-    daysOverdue: r.overdueDays,
-    finePerDay: FINE_PER_DAY,
-    totalFine: r.estimatedFine,
-    paid: false,
-  }));
+  const processFines = (records: any[], isPaid: boolean) => {
+  const groups: Record<string, any> = {};
 
-  const paidFines = paidRecords.map(r => ({
-    id: r.borrowRecordId,
-    userName: r.patronName,
-    studentId: r.studentId,
-    bookTitle: r.bookTitle,
-    daysOverdue: r.overdueDays,
-    finePerDay: FINE_PER_DAY,
-    totalFine: r.estimatedFine,
-    paid: true,
-  }));
+  records.forEach((r) => {
+    let key;
 
-  const allFines = [...unpaidFines, ...paidFines];
+    if (isPaid) {
+      // ✅ đã thanh toán → group theo paymentCode
+      key = r.paymentCode || `single-${r.borrowRecordId}`;
+    } else {
+      // ✅ chưa thanh toán → group theo user
+      key = r.studentId || r.patronName;
+    }
 
-  const filtered = allFines.filter(f => {
+    if (!groups[key]) {
+      groups[key] = {
+        borrowRecordIds: [r.borrowRecordId],
+        studentId: r.studentId,
+        userName: r.patronName,
+        books: [r.bookTitle],
+        daysOverdue: r.overdueDays,
+        totalFine: r.estimatedFine,
+        paid: isPaid,
+        paymentCode: r.paymentCode,
+      };
+    } else {
+      groups[key].books.push(r.bookTitle);
+      groups[key].borrowRecordIds.push(r.borrowRecordId);
+      groups[key].totalFine += r.estimatedFine;
+
+      if (r.overdueDays > groups[key].daysOverdue) {
+        groups[key].daysOverdue = r.overdueDays;
+      }
+    }
+  });
+
+  return Object.values(groups);
+};
+
+  const allFines = [
+    ...processFines(overdueRecords, false),
+    ...processFines(paidRecords, true),
+  ].sort((a, b) => {
+  if (a.paymentCode && !b.paymentCode) return -1;
+  if (!a.paymentCode && b.paymentCode) return 1;
+
+  return 0;
+});
+
+  const filtered = allFines.filter((f) => {
     const q = query.toLowerCase();
     return (
       !q ||
       f.userName.toLowerCase().includes(q) ||
-      f.bookTitle.toLowerCase().includes(q) ||
-      f.studentId?.toLowerCase().includes(q)
+      f.studentId?.toLowerCase().includes(q) ||
+      f.books.some((b: string) => b.toLowerCase().includes(q))
     );
   });
 
-  const totalUnpaid = unpaidFines.reduce((s, f) => s + f.totalFine, 0);
+  const totalUnpaid = allFines
+    .filter((f) => !f.paid)
+    .reduce((s, f) => s + f.totalFine, 0);
   const isLoading = isLoadingOverdue || isLoadingPaid;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="page-header">Quản lý tiền phạt</h1>
-        <p className="text-muted-foreground mt-1">Xem và xử lý các khoản phạt quá hạn.</p>
+        <p className="text-muted-foreground mt-1">
+          Xem và xử lý các khoản phạt quá hạn.
+        </p>
       </div>
 
-      {/* Summary cards */}
       <div className="grid sm:grid-cols-2 gap-4">
-        <div className={`glass-card p-6 flex items-center gap-4 border-l-4 ${totalUnpaid > 0 ? "border-destructive" : "border-success"}`}>
-          <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${totalUnpaid > 0 ? "bg-destructive/10" : "bg-success/10"}`}>
-            <DollarSign className={`w-7 h-7 ${totalUnpaid > 0 ? "text-destructive" : "text-success"}`} />
+        <div
+          className={`glass-card p-6 flex items-center gap-4 border-l-4 ${totalUnpaid > 0 ? "border-destructive" : "border-success"}`}
+        >
+          <div
+            className={`w-14 h-14 rounded-lg flex items-center justify-center ${totalUnpaid > 0 ? "bg-destructive/10" : "bg-success/10"}`}
+          >
+            <DollarSign
+              className={`w-7 h-7 ${totalUnpaid > 0 ? "text-destructive" : "text-success"}`}
+            />
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Chưa thanh toán</p>
-            <p className={`text-3xl font-bold ${totalUnpaid > 0 ? "text-destructive" : "text-success"}`}>
+            <p
+              className={`text-3xl font-bold ${totalUnpaid > 0 ? "text-destructive" : "text-success"}`}
+            >
               {totalUnpaid.toLocaleString("vi-VN")}đ
             </p>
           </div>
@@ -291,18 +325,16 @@ const FineManagement = () => {
         </div>
       </div>
 
-      {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Tìm theo tên người dùng, sách, MSSV..."
           className="pl-10"
         />
       </div>
 
-      {/* Table */}
       <div className="glass-card overflow-hidden">
         <Table>
           <TableHeader>
@@ -324,27 +356,43 @@ const FineManagement = () => {
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-8 text-sm text-muted-foreground"
+                >
                   Không có khoản phạt nào.
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map(f => (
-                <TableRow key={f.id}>
+              filtered.map((f, index) => (
+                <TableRow key={f.id || index}>
                   <TableCell className="font-medium">
                     <div>{f.userName}</div>
                     {f.studentId && (
-                      <span className="text-xs text-muted-foreground">{f.studentId}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {f.studentId}
+                      </span>
                     )}
                   </TableCell>
-                  <TableCell>{f.bookTitle}</TableCell>
+                  <TableCell>
+                    <div className="max-w-[250px] space-y-1">
+                      {f.books.map((title: string, i: number) => (
+                        <div
+                          key={i}
+                          className="text-xs truncate text-muted-foreground"
+                        >
+                          • {title}
+                        </div>
+                      ))}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="destructive" className="text-xs gap-0.5">
                       <AlertTriangle className="w-3 h-3" /> {f.daysOverdue} ngày
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {f.finePerDay.toLocaleString("vi-VN")}đ
+                  <TableCell className="text-xs text-muted-foreground">
+                    5.000đ
                   </TableCell>
                   <TableCell className="font-semibold text-destructive">
                     {f.totalFine.toLocaleString("vi-VN")}đ
@@ -355,18 +403,21 @@ const FineManagement = () => {
                         variant="outline"
                         className="bg-success/10 text-success border-success/20 gap-1"
                       >
-                        <CheckCircle className="w-3 h-3" /> Đã thanh toán
+                        <CheckCircle className="w-3 h-3" /> Đã xong
                       </Badge>
                     ) : (
-                      /* Nút mở modal QR thanh toán */
                       <Button
                         size="sm"
                         variant="outline"
                         className="gap-1.5"
-                        onClick={() => setPayingRecordId(f.id)}
+                        onClick={() =>
+  setPayingConfig({
+    ids: f.borrowRecordIds
+  })
+}
                       >
                         <QrCode className="w-3.5 h-3.5" />
-                        Thanh toán QR
+                        Thanh toán
                       </Button>
                     )}
                   </TableCell>
@@ -381,13 +432,12 @@ const FineManagement = () => {
         Xử lý trả sách và thu phạt tại trang <strong>Trả sách</strong>.
       </p>
 
-      {/* Modal QR — chỉ render khi đã chọn 1 bản ghi */}
-      {payingRecordId !== null && (
+      {payingConfig !== null && (
         <PaymentModal
-          borrowRecordId={payingRecordId}
-          onClose={() => setPayingRecordId(null)}
-          onConfirmed={handlePaymentConfirmed}
-        />
+  borrowRecordIds={payingConfig.ids}
+  onClose={() => setPayingConfig(null)}
+  onConfirmed={handlePaymentConfirmed}
+/>
       )}
     </div>
   );

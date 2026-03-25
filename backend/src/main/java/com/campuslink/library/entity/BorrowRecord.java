@@ -57,6 +57,9 @@ public class BorrowRecord {
     @Column(name = "session_id")
     private String sessionId;
 
+    @Column(name = "payment_code")
+    private String paymentCode;
+
     @PrePersist
     public void prePersist() {
         if (this.borrowDate == null) this.borrowDate = LocalDate.now();

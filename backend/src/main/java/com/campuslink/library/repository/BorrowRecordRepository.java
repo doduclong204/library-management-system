@@ -37,4 +37,8 @@ public interface BorrowRecordRepository extends JpaRepository<BorrowRecord, Inte
             BorrowStatus status,
             Boolean reminderSent
     );
+
+    List<BorrowRecord> findBySessionId(String sessionId);
+
+    List<BorrowRecord> findByPaymentCode(String paymentCode);
 }

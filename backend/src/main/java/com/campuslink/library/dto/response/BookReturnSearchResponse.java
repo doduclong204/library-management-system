@@ -26,4 +26,5 @@ public class BookReturnSearchResponse {
     private boolean isOverdue;
     private long overdueDays;
     private BigDecimal estimatedFine;
+    private String paymentCode;
 }

@@ -27,4 +27,5 @@ public class ReturnBookResponse {
     private BigDecimal fineAmount;
     private boolean hasFinePending;
     private String message;
+    private String paymentCode;
 }

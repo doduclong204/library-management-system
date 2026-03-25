@@ -87,6 +87,7 @@ export interface BorrowRecord {
   id: string;
   bookId?: string;
   bookTitle: string;
+  barcode?: string;
   borrowDate: string;
   dueDate: string;
   returnDate?: string;

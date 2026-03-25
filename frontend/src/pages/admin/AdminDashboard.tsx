@@ -48,7 +48,7 @@ const AdminDashboard = () => {
     setError(null);
     try {
       const [b, br, ov] = await Promise.all([
-        bookApi.getAll({ pageSize: 1000 }),
+        bookApi.getAll({ size: 1000 }),
         borrowApi.getAll({ pageSize: 1000 }),
         borrowRecordApi.getOverdue(),
       ]);

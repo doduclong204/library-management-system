@@ -45,7 +45,7 @@ const BorrowManagement = () => {
   const fetchBooks = useCallback(async () => {
     setIsLoadingBooks(true);
     try {
-      const res = await bookApi.getAll({ pageSize: 200 });
+      const res = await bookApi.getAll({ size: 200 });
       setAllBooks(res.data.data?.result ?? []);
     } catch {
       setAllBooks([]);

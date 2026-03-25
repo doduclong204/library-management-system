@@ -16,127 +16,107 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
-/**
- * Service thanh toán tiền phạt — chế độ DEMO.
- *
- * Dùng tài khoản giả + QR VietQR sandbox:
- *   - QR vẫn hiển thị hình ảnh thật (load từ img.vietqr.io)
- *   - Không thể chuyển tiền thật vào tài khoản này
- *   - Thủ thư bấm "Xác nhận" thủ công → hệ thống cập nhật trạng thái
- *
- * Khi có tài khoản thật: chỉ cần đổi 3 hằng số BANK_ID, ACCOUNT_NO, ACCOUNT_NAME.
- */
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
 
-    // =====================================================
-    // DEMO — đổi 3 dòng này khi có tài khoản thật
-    private static final String BANK_ID      = "BIDV";
-    private static final String ACCOUNT_NO   = "4711828101";
+    private static final String BANK_ID = "BIDV";
+    private static final String ACCOUNT_NO = "4711828101";
     private static final String ACCOUNT_NAME = "KHONG THI LINH";
-    // =====================================================
     private static final String TEMPLATE = "compact2";
 
     private final BorrowRecordRepository borrowRecordRepository;
     private final PaymentRepository paymentRepository;
 
-    /**
-     * Tạo QR thanh toán cho một bản ghi tiền phạt.
-     *
-     * Luồng:
-     *   1. Lấy số tiền phạt từ borrow_record
-     *   2. Sinh paymentCode ngẫu nhiên
-     *   3. Build URL ảnh QR VietQR (ảnh thật, tài khoản demo)
-     *   4. Lưu giao dịch vào DB với status = PENDING
-     *   5. Trả về cho frontend
-     */
     @Transactional
     public CreatePaymentResponse createPayment(CreatePaymentRequest request) {
 
-        // 1. Lấy borrow_record
-        BorrowRecord record = borrowRecordRepository.findById(request.getBorrowRecordId())
-                .orElseThrow(() -> new AppException(ErrorCode.BORROW_NOT_FOUND));
-
-        BigDecimal fineAmount = record.getFineAmount();
-
-        if (fineAmount == null || fineAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Bản ghi này không có tiền phạt.");
+        if (
+                request.getBorrowRecordId() == null &&
+                        (request.getBorrowRecordIds() == null || request.getBorrowRecordIds().isEmpty())
+        ) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
-        if (Boolean.TRUE.equals(record.getFinePaid())) {
-            throw new RuntimeException("Tiền phạt đã được thanh toán trước đó.");
-        }
-
-        // 2. Sinh mã giao dịch — ví dụ: "FINE-A3F8"
         String paymentCode = "FINE-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
-        // 3. Build URL QR VietQR
-        //
-        //    Cách hoạt động của VietQR image API:
-        //    https://img.vietqr.io/image/{bankId}-{accountNo}-{template}.png
-        //      ?amount=15000
-        //      &addInfo=FINE-A3F8        <- nội dung chuyển khoản
-        //      &accountName=DEMO+THU+VIEN
-        //
-        //    Với tài khoản demo (ACCOUNT_NO = "0000000000"):
-        //      -> Ảnh QR vẫn render bình thường
-        //      -> Nếu quét thật sẽ báo "tài khoản không tồn tại" — đúng ý demo
-        //
-        String qrUrl = String.format(
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        List<BorrowRecord> records;
+
+        if (request.getBorrowRecordIds() != null && !request.getBorrowRecordIds().isEmpty()) {
+            records = borrowRecordRepository.findAllById(request.getBorrowRecordIds());
+        } else {
+            BorrowRecord r = borrowRecordRepository.findById(request.getBorrowRecordId())
+                    .orElseThrow(() -> new AppException(ErrorCode.BORROW_NOT_FOUND));
+            records = List.of(r);
+        }
+
+        for (BorrowRecord r : records) {
+            if (Boolean.TRUE.equals(r.getFinePaid())) continue;
+
+            if (r.getPaymentCode() != null) {
+                throw new RuntimeException("Đang có giao dịch xử lý");
+            }
+
+            totalAmount = totalAmount.add(r.getFineAmount());
+            r.setPaymentCode(paymentCode);
+        }
+
+        if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Không có khoản phạt nào cần thanh toán");
+        }
+
+        borrowRecordRepository.saveAll(records);
+
+        String qr = String.format(
                 "https://img.vietqr.io/image/%s-%s-%s.png?amount=%s&addInfo=%s&accountName=%s",
                 BANK_ID,
                 ACCOUNT_NO,
                 TEMPLATE,
-                fineAmount.longValue(),
+                totalAmount.longValue(),
                 paymentCode,
                 ACCOUNT_NAME.replace(" ", "+")
         );
 
-        // 4. Lưu Payment vào DB
-        Payment payment = Payment.builder()
-                .borrowRecord(record)
-                .amount(fineAmount)
-                .paymentCode(paymentCode)
-                .status(PaymentStatus.PENDING)
-                .createdAt(LocalDateTime.now())
-                .build();
-        paymentRepository.save(payment);
+        paymentRepository.save(
+                Payment.builder()
+                        .paymentCode(paymentCode)
+                        .amount(totalAmount)
+                        .status(PaymentStatus.PENDING)
+                        .createdAt(LocalDateTime.now())
+                        .build()
+        );
 
-        // 5. Trả kết quả
         return CreatePaymentResponse.builder()
                 .paymentCode(paymentCode)
-                .amount(fineAmount)
-                .qrUrl(qrUrl)
-                .bankName(BANK_ID + " (Demo)")
+                .amount(totalAmount)
+                .qrUrl(qr)
+                .bankName(BANK_ID)
                 .accountNumber(ACCOUNT_NO)
                 .accountName(ACCOUNT_NAME)
                 .build();
     }
 
-    /**
-     * Xác nhận thủ thư đã thu tiền.
-     * Cập nhật payment.status = PAID và borrowRecord.finePaid = true.
-     */
     @Transactional
     public void confirmPayment(ConfirmPaymentRequest request) {
 
-        Payment payment = paymentRepository.findByPaymentCode(request.getPaymentCode())
-                .orElseThrow(() -> new RuntimeException(
-                        "Không tìm thấy giao dịch: " + request.getPaymentCode()));
+        Payment p = paymentRepository.findByPaymentCode(request.getPaymentCode())
+                .orElseThrow(() -> new RuntimeException("Giao dịch không tồn tại"));
 
-        if (payment.getStatus() == PaymentStatus.PAID) {
-            throw new RuntimeException("Giao dịch này đã được xác nhận trước đó.");
+        if (p.getStatus() == PaymentStatus.PAID) {
+            throw new RuntimeException("Đã thanh toán rồi");
         }
 
-        payment.setStatus(PaymentStatus.PAID);
-        payment.setPaidAt(LocalDateTime.now());
-        paymentRepository.save(payment);
+        p.setStatus(PaymentStatus.PAID);
+        p.setPaidAt(LocalDateTime.now());
+        paymentRepository.save(p);
 
-        BorrowRecord record = payment.getBorrowRecord();
-        record.setFinePaid(true);
-        borrowRecordRepository.save(record);
+        List<BorrowRecord> records = borrowRecordRepository.findByPaymentCode(p.getPaymentCode());
+
+        records.forEach(r -> r.setFinePaid(true));
+        borrowRecordRepository.saveAll(records);
     }
 }
