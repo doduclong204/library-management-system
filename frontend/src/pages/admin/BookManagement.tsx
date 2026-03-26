@@ -35,6 +35,7 @@ const EMPTY_FORM: BookRequest = {
   total_copies: 1,
   author_names: [],
   image_url: "",
+  price: 0,
 };
 
 const BookManagement = () => {
@@ -120,9 +121,7 @@ const BookManagement = () => {
       formData.append("file", file);
       const res = await fetch(`${BASE_URL}/api/v1/upload/image`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${getAccessToken()}`,
-        },
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
         body: formData,
       });
       if (!res.ok) throw new Error();
@@ -166,6 +165,7 @@ const BookManagement = () => {
       total_copies: book.total_copies,
       author_names: [],
       image_url: book.image_url ?? "",
+      price: book.price ?? 0,
     });
     setAuthorInput(book.authors?.join(", ") ?? "");
     setFormOpen(true);
@@ -231,6 +231,8 @@ const BookManagement = () => {
               <TableHead className="hidden sm:table-cell">Tác giả</TableHead>
               <TableHead className="hidden md:table-cell">ISBN</TableHead>
               <TableHead>Thể loại</TableHead>
+              {/* ← Cột giá sách */}
+              <TableHead className="hidden md:table-cell text-amber-600">Giá sách</TableHead>
               <TableHead>Tình trạng</TableHead>
               <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
@@ -238,13 +240,13 @@ const BookManagement = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10">
+                <TableCell colSpan={8} className="text-center py-10">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : books.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-sm text-muted-foreground">
                   Không tìm thấy sách.
                 </TableCell>
               </TableRow>
@@ -278,6 +280,16 @@ const BookManagement = () => {
                   <TableCell>
                     <Badge variant="outline" className="text-xs">{book.genre ?? "—"}</Badge>
                   </TableCell>
+                  {/* ← Hiển thị giá sách */}
+                  <TableCell className="hidden md:table-cell">
+                    {(book.price ?? 0) > 0 ? (
+                      <span className="text-sm font-semibold text-amber-600">
+                        {(book.price ?? 0).toLocaleString("vi-VN")}đ
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Chưa có giá</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant={book.available_copies > 0 ? "outline" : "secondary"}
@@ -309,16 +321,13 @@ const BookManagement = () => {
 
       {meta && meta.pages > 1 && (
         <div className="flex justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-            Trước
-          </Button>
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Trước</Button>
           <span className="text-sm flex items-center px-2">Trang {meta.current} / {meta.pages}</span>
-          <Button variant="outline" size="sm" disabled={page >= meta.pages} onClick={() => setPage(p => p + 1)}>
-            Sau
-          </Button>
+          <Button variant="outline" size="sm" disabled={page >= meta.pages} onClick={() => setPage(p => p + 1)}>Sau</Button>
         </div>
       )}
 
+      {/* Form thêm / sửa sách */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -331,13 +340,7 @@ const BookManagement = () => {
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <Label>Ảnh bìa</Label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               {form.image_url ? (
                 <div className="relative mt-1.5 inline-block">
                   <img
@@ -371,10 +374,7 @@ const BookManagement = () => {
                     ${isUploading ? "pointer-events-none opacity-60" : ""}`}
                 >
                   {isUploading ? (
-                    <>
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                      <span className="text-xs text-muted-foreground">Đang upload...</span>
-                    </>
+                    <><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="text-xs text-muted-foreground">Đang upload...</span></>
                   ) : (
                     <>
                       <ImagePlus className="w-6 h-6 text-muted-foreground" />
@@ -421,6 +421,29 @@ const BookManagement = () => {
                 className="mt-1.5"
               />
             </div>
+
+            {/* ← Field giá sách */}
+            <div className="sm:col-span-2">
+              <Label className="text-amber-700">💰 Giá sách (VNĐ)</Label>
+              <Input
+                type="number"
+                min={0}
+                step={1000}
+                value={form.price ?? 0}
+                onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))}
+                placeholder="Ví dụ: 150000"
+                className="mt-1.5"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Dùng để tạo QR thanh toán tiền sách khi mượn.
+                {(form.price ?? 0) > 0 && (
+                  <span className="ml-1 font-semibold text-amber-600">
+                    = {(form.price ?? 0).toLocaleString("vi-VN")}đ
+                  </span>
+                )}
+              </p>
+            </div>
+
             <div className="sm:col-span-2">
               <Label>Tên tác giả (cách nhau bởi dấu phẩy)</Label>
               <Input

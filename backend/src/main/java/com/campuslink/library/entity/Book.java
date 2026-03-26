@@ -3,6 +3,7 @@ package com.campuslink.library.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Getter
@@ -42,6 +43,9 @@ public class Book {
 
     @Column(columnDefinition = "text")
     private String fullText;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal price = BigDecimal.ZERO;
 
     @ManyToMany(mappedBy = "books")
     private List<Author> authors;

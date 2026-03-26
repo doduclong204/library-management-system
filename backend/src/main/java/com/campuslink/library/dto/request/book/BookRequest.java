@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -25,6 +26,10 @@ public class BookRequest {
     String imageUrl;
 
     String genre;
+    
+
+    @JsonProperty("price")
+    BigDecimal price;
 
     @JsonProperty("publication_year")
     Integer publicationYear;

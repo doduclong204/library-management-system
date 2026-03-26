@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { borrowApi, patronApi, bookApi } from "@/services/apiServices";
+import { paymentApi, type CreatePaymentResponse } from "@/services/paymentApi";
 import type { PatronSearchResult, BorrowRequest, BorrowResponse, Book } from "@/types";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { NotFoundException } from "@zxing/library";
 import {
   BookOpen, ScanLine, Camera, CameraOff, CheckCircle,
-  User, Calendar as CalendarIcon, UserPlus, Mail, Loader2, Upload, X, Plus
+  User, Calendar as CalendarIcon, UserPlus, Mail, Loader2, Upload, X, Plus,
+  QrCode, Copy, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format, addDays } from "date-fns";
 
@@ -35,6 +38,12 @@ const BorrowManagement = () => {
   const [cameraOn, setCameraOn] = useState(false);
   const [isSearchingPatron, setIsSearchingPatron] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // QR payment dialog
+  const [qrDialog, setQrDialog] = useState(false);
+  const [qrData, setQrData] = useState<CreatePaymentResponse | null>(null);
+  const [isLoadingQr, setIsLoadingQr] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
@@ -158,6 +167,9 @@ const BorrowManagement = () => {
     setSelectedBooks(prev => prev.filter(b => b.id !== bookId));
   };
 
+  // Tổng giá tiền sách đã chọn
+  const totalBookPrice = selectedBooks.reduce((sum, b) => sum + (b.price ?? 0), 0);
+
   const handleBorrow = async () => {
     if (selectedBooks.length === 0 || !selectedPatron || !dueDate) {
       toast({ title: "Thiếu thông tin", description: "Vui lòng chọn ít nhất 1 sách và người mượn.", variant: "destructive" });
@@ -176,10 +188,29 @@ const BorrowManagement = () => {
     try {
       const res = await borrowApi.borrow(payload);
       const results = Array.isArray(res.data) ? res.data : [res.data?.data ?? res.data] as BorrowResponse[];
+
       toast({
         title: "Mượn sách thành công! ✅",
         description: `${results.length} cuốn → ${selectedPatron.fullName}. Hạn trả: ${format(dueDate, "dd/MM/yyyy")}`,
       });
+
+      // Nếu có giá sách → mở QR thanh toán tiền sách
+      if (totalBookPrice > 0) {
+        const borrowRecordIds = results.map((r: BorrowResponse) => r.id).filter(Boolean);
+        if (borrowRecordIds.length > 0) {
+          setIsLoadingQr(true);
+          setQrDialog(true);
+          try {
+            const qrRes = await paymentApi.createBookPayment({ borrowRecordIds });
+            setQrData(qrRes.data);
+          } catch {
+            toast({ title: "Không thể tạo QR thanh toán sách", variant: "destructive" });
+            setQrDialog(false);
+          } finally {
+            setIsLoadingQr(false);
+          }
+        }
+      }
 
       await fetchBooks();
       setSelectedBooks([]);
@@ -196,6 +227,25 @@ const BorrowManagement = () => {
       toast({ title: "Mượn sách thất bại", description: msg, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (!qrData) return;
+    navigator.clipboard.writeText(qrData.paymentCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!qrData) return;
+    try {
+      await paymentApi.confirmBookPayment(qrData.paymentCode);
+      toast({ title: "Xác nhận thanh toán thành công! ✅" });
+      setQrDialog(false);
+      setQrData(null);
+    } catch {
+      toast({ title: "Lỗi xác nhận", description: "Vui lòng thử lại.", variant: "destructive" });
     }
   };
 
@@ -284,6 +334,12 @@ const BorrowManagement = () => {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {/* Hiển thị giá sách */}
+                        {(b.price ?? 0) > 0 && (
+                          <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            {(b.price ?? 0).toLocaleString("vi-VN")}đ
+                          </span>
+                        )}
                         <Badge
                           variant={b.available_copies > 0 ? "outline" : "secondary"}
                           className={cn(b.available_copies > 0 ? "bg-success/10 text-success border-success/20" : "")}
@@ -317,6 +373,12 @@ const BorrowManagement = () => {
                   <span className="font-medium truncate">{b.title}</span>
                   <span className="text-xs text-muted-foreground">{b.isbn}</span>
                 </div>
+                {/* Giá sách trong danh sách đã chọn */}
+                {(b.price ?? 0) > 0 && (
+                  <span className="text-xs font-semibold text-amber-600 shrink-0">
+                    {(b.price ?? 0).toLocaleString("vi-VN")}đ
+                  </span>
+                )}
                 <button
                   onClick={() => removeBook(b.id)}
                   className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
@@ -325,6 +387,16 @@ const BorrowManagement = () => {
                 </button>
               </div>
             ))}
+
+            {/* Tổng tiền sách */}
+            {totalBookPrice > 0 && (
+              <div className="flex items-center justify-between p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                <span className="text-xs text-amber-700 font-medium">💰 Tổng tiền sách:</span>
+                <span className="text-sm font-bold text-amber-700">
+                  {totalBookPrice.toLocaleString("vi-VN")}đ
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -441,6 +513,11 @@ const BorrowManagement = () => {
             <p className="text-muted-foreground">👤 {selectedPatron.fullName}</p>
             <p className="text-muted-foreground">📚 {selectedBooks.length} cuốn: {selectedBooks.map(b => b.title).join(", ")}</p>
             <p className="text-muted-foreground">📅 Hạn trả: {format(dueDate, "dd/MM/yyyy")}</p>
+            {totalBookPrice > 0 && (
+              <p className="font-semibold text-amber-700">
+                💰 Tổng tiền sách: {totalBookPrice.toLocaleString("vi-VN")}đ
+              </p>
+            )}
           </div>
         )}
 
@@ -456,6 +533,80 @@ const BorrowManagement = () => {
             : "Xử lý mượn sách"}
         </Button>
       </div>
+
+      {/* QR Payment Dialog */}
+      <Dialog open={qrDialog} onOpenChange={setQrDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <QrCode className="w-5 h-5 text-primary" /> Thanh toán tiền sách
+            </DialogTitle>
+          </DialogHeader>
+
+          {isLoadingQr ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Đang tạo mã QR...</p>
+            </div>
+          ) : qrData ? (
+            <div className="space-y-4">
+              {/* QR Code */}
+              <div className="flex justify-center">
+                <img
+                  src={qrData.qrUrl}
+                  alt="QR thanh toán"
+                  className="w-56 h-56 rounded-xl border border-border shadow-sm"
+                />
+              </div>
+
+              {/* Payment info */}
+              <div className="space-y-2 text-sm bg-muted/30 rounded-xl p-3 border border-border">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Ngân hàng</span>
+                  <span className="font-semibold">{qrData.bankName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Số tài khoản</span>
+                  <span className="font-semibold">{qrData.accountNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Chủ tài khoản</span>
+                  <span className="font-semibold">{qrData.accountName}</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-border pt-2 mt-1">
+                  <span className="text-muted-foreground">Số tiền</span>
+                  <span className="text-lg font-bold text-amber-600">
+                    {qrData.amount.toLocaleString("vi-VN")}đ
+                  </span>
+                </div>
+              </div>
+
+              {/* Payment code */}
+              <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+                <span className="text-xs text-muted-foreground flex-1">Mã GD:</span>
+                <span className="text-sm font-mono font-bold text-primary">{qrData.paymentCode}</span>
+                <button onClick={handleCopyCode} className="text-muted-foreground hover:text-primary transition-colors">
+                  {copiedCode ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <p className="text-xs text-center text-muted-foreground">
+                Quét mã QR hoặc chuyển khoản đúng <strong>nội dung</strong> để xác nhận tự động
+              </p>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setQrDialog(false); setQrData(null); }}>
+                  Đóng
+                </Button>
+                <Button className="flex-1 gap-2" onClick={handleConfirmPayment}>
+                  <Check className="w-4 h-4" /> Xác nhận đã thanh toán
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

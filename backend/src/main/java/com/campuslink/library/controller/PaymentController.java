@@ -65,4 +65,14 @@ public class PaymentController {
         paymentService.confirmPayment(request);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/book/create")
+    public CreatePaymentResponse createBookPayment(@RequestBody CreatePaymentRequest request) {
+        return paymentService.createBookPayment(request);
+    }
+
+    @PostMapping("/book/confirm")
+    public void confirmBookPayment(@RequestBody ConfirmPaymentRequest request) {
+        paymentService.confirmBookPayment(request);
+    }
 }

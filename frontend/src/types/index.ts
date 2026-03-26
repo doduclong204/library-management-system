@@ -9,6 +9,7 @@ export interface Book {
   total_copies: number;
   available_copies: number;
   authors: string[];
+  price?: number; 
 }
 
 export interface BookRequest {
@@ -20,6 +21,7 @@ export interface BookRequest {
   total_copies: number;
   author_ids?: number[];
   author_names?: string[];
+   price?: number;
 }
 
 export interface User {
@@ -97,6 +99,8 @@ export interface BorrowRecord {
   email?: string;
   status?: BorrowStatus;
   sessionId?: string;
+  bookPrice?: number;
+  bookPaid?: boolean;
 }
 
 // return book

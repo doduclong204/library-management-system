@@ -32,6 +32,17 @@ public class BorrowRecord {
     @JoinColumn(name = "librarian_id")
     private Librarian librarian;
 
+    // Snapshot giá sách tại thời điểm mượn
+    @Column(name = "book_price", precision = 10, scale = 2)
+    private BigDecimal bookPrice = BigDecimal.ZERO;
+
+    // Đã thanh toán tiền sách chưa
+    @Column(name = "book_paid", columnDefinition = "boolean default false")
+    private Boolean bookPaid = false;
+
+    @Column(name = "book_payment_code")
+    private String bookPaymentCode;
+
     @Column
     private LocalDate borrowDate;
 
@@ -66,5 +77,7 @@ public class BorrowRecord {
         if (this.fineAmount == null) this.fineAmount = BigDecimal.ZERO;
         if (this.reminderSent == null) this.reminderSent = false;
         if (this.status == null) this.status = BorrowStatus.borrowed;
+        if (this.bookPrice == null) this.bookPrice = BigDecimal.ZERO;
+        if (this.bookPaid == null) this.bookPaid = false;
     }
 }

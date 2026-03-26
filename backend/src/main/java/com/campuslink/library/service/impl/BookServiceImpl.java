@@ -5,10 +5,13 @@ import com.campuslink.library.dto.response.api.ApiPagination;
 import com.campuslink.library.dto.response.book.BookResponse;
 import com.campuslink.library.entity.Author;
 import com.campuslink.library.entity.Book;
+import com.campuslink.library.entity.BookCopy;
+import com.campuslink.library.enums.BookStatus;
 import com.campuslink.library.exception.AppException;
 import com.campuslink.library.exception.ErrorCode;
 import com.campuslink.library.mapper.BookMapper;
 import com.campuslink.library.repository.AuthorRepository;
+import com.campuslink.library.repository.BookCopyRepository;
 import com.campuslink.library.repository.BookRepository;
 import com.campuslink.library.repository.PatronRepository;
 import com.campuslink.library.service.BookService;
@@ -35,6 +38,7 @@ public class BookServiceImpl implements BookService {
     private final AuthorRepository authorRepository;
     private final BookMapper bookMapper;
     private final PatronRepository patronRepository;
+    private final BookCopyRepository bookCopyRepository;
 
     @Override
     public ApiPagination<BookResponse> getBooks(int page, int size, String keyword, String genre,
@@ -94,9 +98,19 @@ public class BookServiceImpl implements BookService {
                 .publicationYear(request.getPublicationYear())
                 .totalCopies(request.getTotalCopies())
                 .availableCopies(request.getTotalCopies())
+                .price(request.getPrice())
                 .build();
 
         book = bookRepository.save(book);
+
+        for (int i = 1; i <= request.getTotalCopies(); i++) {
+            BookCopy copy = BookCopy.builder()
+                    .book(book)
+                    .barcode(book.getIsbn() + "-" + String.format("%03d", i))
+                    .status(BookStatus.available)
+                    .build();
+            bookCopyRepository.save(copy);
+        }
 
         List<Author> authors = resolveAuthors(request);
         if (!authors.isEmpty()) {
@@ -127,6 +141,7 @@ public class BookServiceImpl implements BookService {
         book.setImageUrl(request.getImageUrl());
         book.setGenre(request.getGenre());
         book.setPublicationYear(request.getPublicationYear());
+        book.setPrice(request.getPrice());
 
         int oldTotal = book.getTotalCopies() != null ? book.getTotalCopies() : 0;
         int newTotal = request.getTotalCopies();

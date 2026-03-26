@@ -41,4 +41,5 @@ public interface BorrowRecordRepository extends JpaRepository<BorrowRecord, Inte
     List<BorrowRecord> findBySessionId(String sessionId);
 
     List<BorrowRecord> findByPaymentCode(String paymentCode);
+    List<BorrowRecord> findByBookPaymentCode(String bookPaymentCode);
 }

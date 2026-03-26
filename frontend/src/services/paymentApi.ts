@@ -15,6 +15,7 @@ export interface CreatePaymentRequest {
 }
 
 export const paymentApi = {
+  // === Thanh toán tiền PHẠT ===
   create: (data: CreatePaymentRequest) => {
     const body = Object.fromEntries(
       Object.entries(data).filter(([_, v]) => v !== undefined && v !== null)
@@ -24,4 +25,15 @@ export const paymentApi = {
 
   confirm: (paymentCode: string) =>
     api.post<void>("/payments/confirm", { paymentCode }),
+
+  // === Thanh toán tiền SÁCH ===
+  createBookPayment: (data: CreatePaymentRequest) => {
+    const body = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined && v !== null)
+    );
+    return api.post<CreatePaymentResponse>("/payments/book/create", body);
+  },
+
+  confirmBookPayment: (paymentCode: string) =>
+    api.post<void>("/payments/book/confirm", { paymentCode }),
 };

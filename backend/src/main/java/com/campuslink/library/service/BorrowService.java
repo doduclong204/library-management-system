@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,6 +91,9 @@ public class BorrowService {
                     .dueDate(request.getDueDate())
                     .status(BorrowStatus.borrowed)
                     .sessionId(sessionId)
+                    .bookPrice(bookCopy.getBook().getPrice() != null  // ← thêm
+                            ? bookCopy.getBook().getPrice()
+                            : BigDecimal.ZERO)
                     .build();
 
             savedRecords.add(borrowRepository.save(record));

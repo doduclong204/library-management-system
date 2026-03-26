@@ -224,11 +224,9 @@ const BorrowListPage = () => {
     try {
       const returnPromises = activeRecords.map(async (b) => {
         if (!b.id) return null;
-
         const searchRes = await borrowRecordApi.search({ title: b.bookTitle });
         const records = searchRes.data ?? [];
         const match = records.find((r) => r.borrowRecordId === Number(b.id));
-
         if (match) {
           return borrowRecordApi.returnBook({
             barcode: match.barcode,
@@ -439,11 +437,29 @@ const BorrowListPage = () => {
                         {group.email} · {group.borrowDate}
                       </p>
                     </div>
-                    <div className="ml-2 flex items-center gap-2">
+                    <div className="ml-2 flex items-center gap-2 flex-wrap">
                       {getSessionStatusSummary(group.records)}
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                         {group.records.length} cuốn
                       </span>
+                      {/* Tổng tiền sách */}
+                      {group.records.reduce((sum, r) => sum + (r.bookPrice ?? 0), 0) > 0 && (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                          group.records.every(r => (r.bookPrice ?? 0) === 0 || r.bookPaid)
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}>
+                          💰 Tổng: {group.records
+                            .reduce((sum, r) => sum + (r.bookPrice ?? 0), 0)
+                            .toLocaleString("vi-VN")}đ
+                          {group.records.every(r => (r.bookPrice ?? 0) === 0 || r.bookPaid)
+                            ? " ✓"
+                            : ` (chưa trả ${group.records
+                                .filter(r => !r.bookPaid && (r.bookPrice ?? 0) > 0)
+                                .reduce((sum, r) => sum + (r.bookPrice ?? 0), 0)
+                                .toLocaleString("vi-VN")}đ)`}
+                        </span>
+                      )}
                     </div>
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
@@ -487,15 +503,31 @@ const BorrowListPage = () => {
                             {b.returnDate && ` · Trả: ${b.returnDate}`}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+
+                          {/* Tiền phạt */}
                           {(b.fine ?? 0) > 0 && (
-                            <span className="text-xs font-semibold text-red-600">
-                              {Number(b.fine).toLocaleString("vi-VN")}đ
+                            <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                              Phạt: {Number(b.fine).toLocaleString("vi-VN")}đ
                             </span>
                           )}
+
+                          {/* Tiền sách */}
+                          {(b.bookPrice ?? 0) > 0 && (
+                            b.bookPaid ? (
+                              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                ✓ Đã thanh toán {Number(b.bookPrice).toLocaleString("vi-VN")}đ
+                              </span>
+                            ) : (
+                              <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                💰 Chưa trả {Number(b.bookPrice).toLocaleString("vi-VN")}đ
+                              </span>
+                            )
+                          )}
+
                           {renderBadge(b)}
-                          {(b.status === "borrowed" ||
-                            b.status === "overdue") && (
+
+                          {(b.status === "borrowed" || b.status === "overdue") && (
                             <Button
                               size="sm"
                               onClick={() => openReturnModal(b)}
@@ -587,9 +619,7 @@ const BorrowListPage = () => {
               <div className="rounded-xl border bg-muted/30 p-4 space-y-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Người mượn</span>
-                  <span className="font-semibold">
-                    {selectedBorrow.userName}
-                  </span>
+                  <span className="font-semibold">{selectedBorrow.userName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sách</span>
@@ -605,6 +635,17 @@ const BorrowListPage = () => {
                   <span className="text-muted-foreground">Hạn trả</span>
                   <span className="font-medium">{selectedBorrow.dueDate}</span>
                 </div>
+                {/* Hiển thị trạng thái tiền sách trong modal */}
+                {(selectedBorrow.bookPrice ?? 0) > 0 && (
+                  <div className="flex justify-between pt-1 border-t border-border">
+                    <span className="text-muted-foreground">Tiền sách</span>
+                    <span className={`font-semibold ${selectedBorrow.bookPaid ? "text-emerald-600" : "text-amber-600"}`}>
+                      {selectedBorrow.bookPaid
+                        ? `✓ Đã thanh toán ${Number(selectedBorrow.bookPrice).toLocaleString("vi-VN")}đ`
+                        : `💰 Chưa trả ${Number(selectedBorrow.bookPrice).toLocaleString("vi-VN")}đ`}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -640,8 +681,7 @@ const BorrowListPage = () => {
                 </div>
               ) : (
                 <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-medium">
-                  <CheckCircle className="w-4 h-4" /> Trả đúng hạn — không có
-                  phạt
+                  <CheckCircle className="w-4 h-4" /> Trả đúng hạn — không có phạt
                 </div>
               )}
             </div>

@@ -30,4 +30,10 @@ public class BorrowResponse {
     private BigDecimal fineAmount;
 
     private String sessionId;
+
+    @JsonProperty("bookPrice")
+    private BigDecimal bookPrice;
+
+    @JsonProperty("bookPaid")
+    private Boolean bookPaid;
 }

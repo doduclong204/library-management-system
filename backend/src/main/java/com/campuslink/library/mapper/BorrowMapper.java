@@ -18,5 +18,7 @@ public interface BorrowMapper {
     @Mapping(target = "email", source = "patron.email")
     @Mapping(target = "bookTitle", source = "bookCopy.book.title")
     @Mapping(target = "sessionId", source = "sessionId")
+    @Mapping(target = "bookPrice", source = "bookPrice")
+    @Mapping(target = "bookPaid", source = "bookPaid")
     BorrowResponse toBorrowResponse(BorrowRecord record);
 }
