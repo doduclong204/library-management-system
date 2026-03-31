@@ -55,4 +55,15 @@ public class BorrowRecordController {
     public ResponseEntity<BigDecimal> getPaidTotal() {
         return ResponseEntity.ok(borrowRecordService.getTotalPaidFines());
     }
+
+    @GetMapping("/pending-refunds")
+    public ResponseEntity<List<BookReturnSearchResponse>> getPendingRefunds() {
+        return ResponseEntity.ok(borrowRecordService.getPendingRefunds());
+    }
+
+    @PatchMapping("/{id}/confirm-refund")
+    public ResponseEntity<Void> confirmRefund(@PathVariable Integer id) {
+        borrowRecordService.confirmRefund(id);
+        return ResponseEntity.noContent().build();
+    }
 }

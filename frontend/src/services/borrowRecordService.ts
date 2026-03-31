@@ -29,4 +29,10 @@ export const borrowRecordApi = {
 
   payFine: (id: number) =>
     api.patch(`/borrow-records/${id}/pay-fine`),
+
+  getPendingRefunds: () =>
+    api.get<BookReturnSearchResponse[]>("/borrow-records/pending-refunds"),
+
+  confirmRefund: (id: number) =>
+    api.patch(`/borrow-records/${id}/confirm-refund`),
 };

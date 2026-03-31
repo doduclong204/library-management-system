@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -40,12 +42,65 @@ public class ReminderScheduler {
 
         for (Map.Entry<String, List<BorrowRecord>> entry : grouped.entrySet()) {
             List<BorrowRecord> group = entry.getValue();
-            log.info("Gửi email nhắc nhở cho sessionId={}, số sách={}", entry.getKey(), group.size());
             emailService.sendDueDateReminder(group);
             for (BorrowRecord record : group) {
                 record.setReminderSent(true);
                 borrowRepository.save(record);
             }
         }
+    }
+
+    @Scheduled(cron = "0 15 8 * * *")
+    public void sendConfiscationWarnings() {
+        LocalDate targetDueDate = LocalDate.now().minusDays(12);
+
+        List<BorrowRecord> records = borrowRepository.findByStatusInAndDueDateBefore(
+                        List.of(BorrowStatus.borrowed, BorrowStatus.overdue),
+                        targetDueDate.plusDays(1)
+                ).stream()
+                .filter(r -> r.getDueDate().equals(targetDueDate))
+                .toList();
+
+        if (records.isEmpty()) {
+            log.info("sendConfiscationWarnings: không có ai quá hạn đúng 12 ngày");
+            return;
+        }
+
+        records.stream()
+                .collect(Collectors.groupingBy(r -> r.getPatron().getEmail()))
+                .values()
+                .forEach(emailService::sendConfiscationWarning);
+
+        log.info("sendConfiscationWarnings: gửi cảnh báo cho {} sách", records.size());
+    }
+
+    @Scheduled(cron = "0 30 8 * * *")
+    public void autoConfiscateOverdue() {
+        LocalDate threshold = LocalDate.now().minusDays(15);
+
+        List<BorrowRecord> records = borrowRepository.findByStatusInAndDueDateBefore(
+                List.of(BorrowStatus.borrowed, BorrowStatus.overdue),
+                threshold.plusDays(1)
+        );
+
+        if (records.isEmpty()) {
+            log.info("autoConfiscateOverdue: không có sách nào quá hạn 15 ngày");
+            return;
+        }
+
+        for (BorrowRecord r : records) {
+            BigDecimal fine = (r.getBookPrice() != null) ? r.getBookPrice() : BigDecimal.ZERO;
+            r.setFineAmount(fine);
+            r.setFinePaid(false);
+            r.setStatus(BorrowStatus.confiscated);
+        }
+        borrowRepository.saveAll(records);
+
+        records.stream()
+                .collect(Collectors.groupingBy(r -> r.getPatron().getEmail()))
+                .values()
+                .forEach(emailService::sendConfiscationNotice);
+
+        log.info("autoConfiscateOverdue: đã thu hồi {} sách quá hạn 15 ngày", records.size());
     }
 }

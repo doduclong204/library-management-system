@@ -44,6 +44,22 @@ public class EmailNotificationService {
         send(to, subject, buildReminderHtml(records));
     }
 
+    @Async
+    public void sendConfiscationWarning(List<BorrowRecord> records) {
+        if (records == null || records.isEmpty()) return;
+        String to = records.get(0).getPatron().getEmail();
+        String subject = "[Thư viện] ⚠️ Cảnh báo: Sách sắp bị thu hồi sau 3 ngày";
+        send(to, subject, buildConfiscationWarningHtml(records));
+    }
+
+    @Async
+    public void sendConfiscationNotice(List<BorrowRecord> records) {
+        if (records == null || records.isEmpty()) return;
+        String to = records.get(0).getPatron().getEmail();
+        String subject = "[Thư viện] 🚨 Thông báo thu hồi sách & phạt tiền";
+        send(to, subject, buildConfiscationHtml(records));
+    }
+
     private void send(String to, String subject, String htmlBody) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -160,5 +176,111 @@ public class EmailNotificationService {
             </body>
             </html>
             """.formatted(patronName, daysLeft, dueDate, rows.toString());
+    }
+
+    private String buildConfiscationWarningHtml(List<BorrowRecord> records) {
+        String patronName = records.get(0).getPatron().getFullName();
+
+        StringBuilder rows = new StringBuilder();
+        for (BorrowRecord r : records) {
+            long overdueDays = ChronoUnit.DAYS.between(r.getDueDate(), LocalDate.now());
+            String confiscationDate = r.getDueDate().plusDays(15).format(DATE_FMT);
+            rows.append("""
+                <tr>
+                  <td style="padding:8px 12px; border:1px solid #ddd;">%s</td>
+                  <td style="padding:8px 12px; border:1px solid #ddd; color:#e53935;">%d ngày</td>
+                  <td style="padding:8px 12px; border:1px solid #ddd; color:#e53935; font-weight:bold;">%s</td>
+                </tr>
+                """.formatted(
+                    r.getBookCopy().getBook().getTitle(),
+                    overdueDays,
+                    confiscationDate
+            ));
+        }
+
+        return """
+            <html>
+            <body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">
+              <div style="background:#e65100; padding:20px; border-radius:8px 8px 0 0;">
+                <h2 style="color:#fff; margin:0;">⚠️ Cảnh báo: Sách sắp bị thu hồi</h2>
+              </div>
+              <div style="border:1px solid #ddd; border-top:none; padding:24px; border-radius:0 0 8px 8px;">
+                <p>Xin chào <b>%s</b>,</p>
+                <p style="color:#e65100; font-weight:bold;">
+                  Bạn đang quá hạn trả sách. Nếu không trả trong <b>3 ngày tới</b>,
+                  hệ thống sẽ tự động thu hồi và ghi nhận khoản phạt bằng toàn bộ giá mượn sách.
+                </p>
+                <table style="border-collapse:collapse; width:100%%;">
+                  <thead>
+                    <tr style="background:#e65100; color:#fff;">
+                      <th style="padding:8px 12px; border:1px solid #ddd; text-align:left;">Tên sách</th>
+                      <th style="padding:8px 12px; border:1px solid #ddd; text-align:left;">Số ngày quá hạn</th>
+                      <th style="padding:8px 12px; border:1px solid #ddd; text-align:left;">Ngày thu hồi</th>
+                    </tr>
+                  </thead>
+                  <tbody>%s</tbody>
+                </table>
+                <p style="margin-top:20px;">
+                  Vui lòng đến thư viện ngay để trả sách và tránh bị phạt toàn bộ tiền mượn.
+                </p>
+                <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
+                <p style="font-size:12px; color:#999;">Email này được gửi tự động từ hệ thống Thư viện CampusLink.</p>
+              </div>
+            </body>
+            </html>
+            """.formatted(patronName, rows.toString());
+    }
+
+    private String buildConfiscationHtml(List<BorrowRecord> records) {
+        String patronName = records.get(0).getPatron().getFullName();
+
+        StringBuilder rows = new StringBuilder();
+        for (BorrowRecord r : records) {
+            long overdueDays = ChronoUnit.DAYS.between(r.getDueDate(), LocalDate.now());
+            rows.append("""
+                <tr>
+                  <td style="padding:8px 12px; border:1px solid #ddd;">%s</td>
+                  <td style="padding:8px 12px; border:1px solid #ddd; color:#e53935; font-weight:bold;">%d ngày</td>
+                  <td style="padding:8px 12px; border:1px solid #ddd; color:#e53935; font-weight:bold;">%,.0f đ</td>
+                </tr>
+                """.formatted(
+                    r.getBookCopy().getBook().getTitle(),
+                    overdueDays,
+                    r.getFineAmount()
+            ));
+        }
+
+        return """
+            <html>
+            <body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">
+              <div style="background:#c62828; padding:20px; border-radius:8px 8px 0 0;">
+                <h2 style="color:#fff; margin:0;">🚨 Thông báo thu hồi sách</h2>
+              </div>
+              <div style="border:1px solid #ddd; border-top:none; padding:24px; border-radius:0 0 8px 8px;">
+                <p>Xin chào <b>%s</b>,</p>
+                <p style="color:#c62828; font-weight:bold;">
+                  Bạn đã quá hạn trả sách hơn 15 ngày. Hệ thống đã tự động thu hồi các đầu sách sau
+                  và ghi nhận khoản phạt cần thanh toán:
+                </p>
+                <table style="border-collapse:collapse; width:100%%;">
+                  <thead>
+                    <tr style="background:#c62828; color:#fff;">
+                      <th style="padding:8px 12px; border:1px solid #ddd; text-align:left;">Tên sách</th>
+                      <th style="padding:8px 12px; border:1px solid #ddd; text-align:left;">Số ngày trễ</th>
+                      <th style="padding:8px 12px; border:1px solid #ddd; text-align:left;">Tiền phạt</th>
+                    </tr>
+                  </thead>
+                  <tbody>%s</tbody>
+                </table>
+                <p style="margin-top:20px;">
+                  Vui lòng đến thư viện để thanh toán khoản phạt.<br>
+                  Tài khoản của bạn sẽ bị tạm khóa cho đến khi hoàn tất thanh toán.
+                </p>
+                <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
+                <p style="font-size:12px; color:#999;">Email này được gửi tự động từ hệ thống Thư viện CampusLink.</p>
+              </div>
+            </body>
+            </html>
+            """.formatted(patronName, rows.toString());
     }
 }

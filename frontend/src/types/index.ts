@@ -1,4 +1,3 @@
-//book
 export interface Book {
   id: number;
   isbn: string;
@@ -9,7 +8,7 @@ export interface Book {
   total_copies: number;
   available_copies: number;
   authors: string[];
-  price?: number; 
+  price?: number;
 }
 
 export interface BookRequest {
@@ -21,7 +20,7 @@ export interface BookRequest {
   total_copies: number;
   author_ids?: number[];
   author_names?: string[];
-   price?: number;
+  price?: number;
 }
 
 export interface User {
@@ -33,7 +32,6 @@ export interface User {
   role: "LIBRARIAN" | "USER";
 }
 
-//auth, login
 export interface LoginRequest {
   email: string;
   password: string;
@@ -52,7 +50,6 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
-//phantrang
 export interface ApiResponse<T> {
   statusCode: number;
   message: string;
@@ -66,7 +63,7 @@ export interface ApiPagination<T> {
     pageSize: number;
     pages: number;
     total: number;
-    totalPatrons?: number; // thêm trường này nếu backend trả về
+    totalPatrons?: number;
   };
   result: T[];
 }
@@ -82,8 +79,7 @@ export interface Fine {
   paid: boolean;
 }
 
-//borrow
-export type BorrowStatus = "borrowed" | "returned" | "overdue" | "lost";
+export type BorrowStatus = "borrowed" | "returned" | "overdue" | "lost" | "confiscated";
 
 export interface BorrowRecord {
   id: string;
@@ -103,7 +99,6 @@ export interface BorrowRecord {
   bookPaid?: boolean;
 }
 
-// return book
 export interface BookReturnSearchResponse {
   borrowRecordId: number;
   isbn: string;
@@ -119,6 +114,7 @@ export interface BookReturnSearchResponse {
   isOverdue: boolean;
   overdueDays: number;
   estimatedFine: number;
+  bookPrice?: number;
 }
 
 export interface ReturnBookResponse {
@@ -136,6 +132,9 @@ export interface ReturnBookResponse {
   overdueDays: number;
   fineAmount: number;
   hasFinePending: boolean;
+  hasRefund: boolean;   
+  refundAmount: number;     
+  earlyDays: number;
   message: string;
 }
 
@@ -144,49 +143,6 @@ export interface ReturnBookRequest {
   title?: string;
   barcode?: string;
   returnDate: string;
-}
-
-
-// BorrowResponse khớp với backend
-export interface BorrowResponse {
-  id: number;
-  userName: string;   // mapped từ patronName
-  email: string;
-  bookTitle: string;
-  borrowDate: string;
-  dueDate: string;
-  returnDate?: string;
-  status: BorrowStatus;
-  fine?: number;
-}
-
-// Patron search (để tìm người mượn theo email)
-export interface PatronSearchResult {
-  id: number;
-  email: string;
-  fullName: string;
-  studentId?: string;
-}
-
-// BookCopy (để biết bookCopyId khi chọn sách)
-export interface BookCopy {
-  id: number;
-  barcode: string;
-  status: "available" | "borrowed" | "lost";
-  bookId: number;
-  bookTitle: string;
-  isbn: string;
-}
-
-// Borrow request/response khớp với backend
-export interface BorrowRequest {
-  email: string;
-  fullName?: string;
-  studentId?: string;
-  bookCopyId?: number;
-  bookCopyIds?: number[];
-  librarianId?: number;
-  dueDate: string;
 }
 
 export interface BorrowResponse {
@@ -201,7 +157,6 @@ export interface BorrowResponse {
   fine?: number;
 }
 
-// Patron search result
 export interface PatronSearchResult {
   id: number;
   email: string;
@@ -209,7 +164,6 @@ export interface PatronSearchResult {
   studentId?: string;
 }
 
-// BookCopy — để lấy bookCopyId khi chọn sách
 export interface BookCopy {
   id: number;
   barcode: string;
@@ -217,4 +171,14 @@ export interface BookCopy {
   bookId: number;
   bookTitle: string;
   isbn: string;
+}
+
+export interface BorrowRequest {
+  email: string;
+  fullName?: string;
+  studentId?: string;
+  bookCopyId?: number;
+  bookCopyIds?: number[];
+  librarianId?: number;
+  dueDate: string;
 }

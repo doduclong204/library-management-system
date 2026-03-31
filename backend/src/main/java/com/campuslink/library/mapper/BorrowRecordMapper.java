@@ -18,6 +18,8 @@ public interface BorrowRecordMapper {
     @Mapping(target = "patronName", source = "patron.fullName")
     @Mapping(target = "patronEmail", source = "patron.email")
     @Mapping(target = "studentId", source = "patron.studentId")
+    @Mapping(target = "bookPrice", source = "bookPrice")
+    @Mapping(target = "status", expression = "java(record.getStatus() != null ? record.getStatus().name() : null)")
     @Mapping(target = "isOverdue", ignore = true)
     @Mapping(target = "overdueDays", ignore = true)
     @Mapping(target = "estimatedFine", ignore = true)
@@ -36,5 +38,8 @@ public interface BorrowRecordMapper {
     @Mapping(target = "fineAmount", ignore = true)
     @Mapping(target = "hasFinePending", ignore = true)
     @Mapping(target = "message", ignore = true)
+    @Mapping(target = "refundAmount", ignore = true)
+    @Mapping(target = "earlyDays", ignore = true)
+    @Mapping(target = "hasRefund", ignore = true)
     ReturnBookResponse toReturnResponse(BorrowRecord record);
 }

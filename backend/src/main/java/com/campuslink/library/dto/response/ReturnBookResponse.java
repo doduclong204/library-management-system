@@ -28,4 +28,7 @@ public class ReturnBookResponse {
     private boolean hasFinePending;
     private String message;
     private String paymentCode;
+    private BigDecimal refundAmount;
+    private long earlyDays;
+    private boolean hasRefund;
 }

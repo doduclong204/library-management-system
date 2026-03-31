@@ -7,7 +7,8 @@ import { BrowserMultiFormatReader } from "@zxing/browser";
 import { NotFoundException } from "@zxing/library";
 import {
   Undo2, ScanLine, Camera, CameraOff, CheckCircle,
-  AlertTriangle, Calendar as CalendarIcon, User, Clock, Upload
+  AlertTriangle, Calendar as CalendarIcon, User, Clock, Upload,
+  Banknote, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+const vnd = (amount: number) =>
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
 
 const ReturnBookPage = () => {
   const [query, setQuery] = useState("");
@@ -24,6 +28,8 @@ const ReturnBookPage = () => {
   const [returnResult, setReturnResult] = useState<ReturnBookResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
+  const [isConfirmingRefund, setIsConfirmingRefund] = useState(false);
+  const [refundConfirmed, setRefundConfirmed] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
 
@@ -126,6 +132,7 @@ const ReturnBookPage = () => {
     setQuery(record.bookTitle);
     setSearchResults([]);
     setReturnResult(null);
+    setRefundConfirmed(false);
   };
 
   const handleClear = () => {
@@ -133,6 +140,7 @@ const ReturnBookPage = () => {
     setQuery("");
     setSearchResults([]);
     setReturnResult(null);
+    setRefundConfirmed(false);
   };
 
   const handleReturn = async () => {
@@ -141,6 +149,7 @@ const ReturnBookPage = () => {
       return;
     }
     setIsReturning(true);
+    setRefundConfirmed(false);
     try {
       const res = await borrowRecordApi.returnBook({
         barcode: selectedRecord.barcode,
@@ -152,6 +161,8 @@ const ReturnBookPage = () => {
         title: "Trả sách thành công! ✅",
         description: result.hasFinePending
           ? `Phạt: ${result.fineAmount.toLocaleString("vi-VN")}đ (${result.overdueDays} ngày quá hạn)`
+          : result.hasRefund
+          ? `Hoàn tiền: ${result.refundAmount.toLocaleString("vi-VN")}đ (trả sớm ${result.earlyDays} ngày)`
           : "Không có phạt. Trả đúng hạn!",
       });
       setSelectedRecord(null);
@@ -164,6 +175,27 @@ const ReturnBookPage = () => {
       });
     } finally {
       setIsReturning(false);
+    }
+  };
+
+  const handleConfirmRefund = async () => {
+    if (!returnResult?.borrowRecordId) return;
+    setIsConfirmingRefund(true);
+    try {
+      await borrowRecordApi.confirmRefund(returnResult.borrowRecordId);
+      setRefundConfirmed(true);
+      toast({
+        title: "Đã xác nhận hoàn tiền ✅",
+        description: `Đã hoàn ${vnd(Number(returnResult.refundAmount))} cho sinh viên.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Lỗi xác nhận",
+        description: err?.response?.data?.message ?? "Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConfirmingRefund(false);
     }
   };
 
@@ -229,7 +261,7 @@ const ReturnBookPage = () => {
           <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={query}
-            onChange={e => { setQuery(e.target.value); setSelectedRecord(null); setReturnResult(null); }}
+            onChange={e => { setQuery(e.target.value); setSelectedRecord(null); setReturnResult(null); setRefundConfirmed(false); }}
             placeholder="Nhập ISBN, barcode hoặc tên sách..."
             className="pl-10"
           />
@@ -342,21 +374,70 @@ const ReturnBookPage = () => {
           {isReturning ? "Đang xử lý..." : "Xử lý trả sách"}
         </Button>
 
+        {/* Kết quả trả sách */}
         {returnResult && (
-          <div className={`p-4 rounded-lg text-sm font-medium flex items-center gap-2 ${
-            returnResult.hasFinePending ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"
-          }`}>
-            {returnResult.hasFinePending ? (
-              <>
+          <div className="space-y-3">
+            {/* Có phạt */}
+            {returnResult.hasFinePending && (
+              <div className="p-4 rounded-lg text-sm font-medium flex items-center gap-2 bg-destructive/10 text-destructive">
                 <AlertTriangle className="w-5 h-5" />
                 Phạt quá hạn: {returnResult.fineAmount.toLocaleString("vi-VN")}đ
                 ({returnResult.overdueDays} ngày × 5.000đ)
-              </>
-            ) : (
-              <>
+              </div>
+            )}
+
+            {/* Trả đúng hạn, không refund */}
+            {!returnResult.hasFinePending && !returnResult.hasRefund && (
+              <div className="p-4 rounded-lg text-sm font-medium flex items-center gap-2 bg-success/10 text-success">
                 <CheckCircle className="w-5 h-5" />
                 Không phạt — trả đúng hạn!
-              </>
+              </div>
+            )}
+
+            {/* Có hoàn tiền (trả sách sớm) */}
+            {returnResult.hasRefund && (
+              <div className="p-4 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2">
+                    <Banknote className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                        Hoàn tiền cho sinh viên
+                      </p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                        Trả sớm {returnResult.earlyDays} ngày →{" "}
+                        <span className="font-bold">
+                          {vnd(Number(returnResult.refundAmount))}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {refundConfirmed ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-success/10 text-success border-success/30 gap-1 shrink-0"
+                    >
+                      <CheckCircle className="w-3 h-3" /> Đã hoàn tiền
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900 gap-1.5"
+                      onClick={handleConfirmRefund}
+                      disabled={isConfirmingRefund}
+                    >
+                      {isConfirmingRefund ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CheckCircle className="w-3.5 h-3.5" />
+                      )}
+                      Xác nhận đã hoàn tiền
+                    </Button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}

@@ -4,5 +4,6 @@ public enum BorrowStatus {
     borrowed,
     returned,
     overdue,
-    lost
+    lost,
+    confiscated
 }

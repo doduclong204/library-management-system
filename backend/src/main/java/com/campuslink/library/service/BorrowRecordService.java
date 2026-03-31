@@ -22,19 +22,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.campuslink.library.enums.BorrowStatus.borrowed;
-import static com.campuslink.library.enums.BorrowStatus.overdue;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class BorrowRecordService {
 
-    private static final BigDecimal FINE_PER_DAY = new BigDecimal("5000");
+    private static final BigDecimal FINE_RATE_PER_DAY = new BigDecimal("0.20");
+    private static final long EARLY_RETURN_THRESHOLD_DAYS = 14;
 
     private final BorrowRecordRepository borrowRecordRepository;
     private final BookCopyRepository bookCopyRepository;
@@ -57,58 +57,91 @@ public class BorrowRecordService {
             long overdueDays = Math.max(0, ChronoUnit.DAYS.between(record.getDueDate(), LocalDate.now()));
             response.setOverdueDays(overdueDays);
             response.setOverdue(overdueDays > 0);
-            response.setEstimatedFine(calculateFine(record.getDueDate(), LocalDate.now()));
+            response.setEstimatedFine(calculateFine(record.getDueDate(), LocalDate.now(), record.getBookPrice()));
             return response;
         }).toList();
     }
 
     @Transactional
     public ReturnBookResponse returnBook(ReturnBookRequest request) {
-        if (request.getIsbn() == null && request.getTitle() == null && request.getBarcode() == null) {
+        if (request.getIsbn() == null && request.getTitle() == null && request.getBarcode() == null && request.getSessionId() == null) {
             throw new AppException(ErrorCode.INVALID_KEY);
         }
 
-        List<BorrowRecord> records = borrowRecordRepository
-                .findAll(buildSearchSpec(request.getIsbn(), request.getTitle(), request.getBarcode()));
+        List<BorrowRecord> records;
+        if (request.getSessionId() != null && !request.getSessionId().isBlank()) {
+            records = borrowRecordRepository.findBySessionIdAndStatusIn(
+                    request.getSessionId(), List.of(BorrowStatus.borrowed, BorrowStatus.overdue));
+        } else {
+            records = borrowRecordRepository.findAll(buildSearchSpec(request.getIsbn(), request.getTitle(), request.getBarcode()));
+            if (records.size() > 1) {
+                throw new AppException(ErrorCode.BORROW_RECORD_NOT_UNIQUE);
+            }
+        }
 
         if (records.isEmpty()) {
             throw new AppException(ErrorCode.BORROW_NOT_FOUND);
         }
 
-        if (records.size() > 1) {
-            throw new AppException(ErrorCode.BORROW_RECORD_NOT_UNIQUE);
-        }
-
-        BorrowRecord record = records.get(0);
-
-        if (record.getStatus() == BorrowStatus.returned) {
-            throw new AppException(ErrorCode.BORROW_ALREADY_RETURNED);
-        }
-
+        String paymentCode = "FINE-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         LocalDate returnDate = request.getReturnDate() != null ? request.getReturnDate() : LocalDate.now();
-        BigDecimal fineAmount = calculateFine(record.getDueDate(), returnDate);
-        long overdueDays = Math.max(0, ChronoUnit.DAYS.between(record.getDueDate(), returnDate));
+        BigDecimal totalFine = BigDecimal.ZERO;
 
-        record.setReturnDate(returnDate);
-        record.setFineAmount(fineAmount);
-        record.setFinePaid(false);
-        record.setStatus(BorrowStatus.returned);
-        borrowRecordRepository.save(record);
+        for (BorrowRecord record : records) {
+            if (record.getStatus() == BorrowStatus.returned) continue;
 
-        BookCopy bookCopy = record.getBookCopy();
-        bookCopy.setStatus(BookStatus.available);
-        bookCopyRepository.save(bookCopy);
+            BigDecimal fineAmount = calculateFine(record.getDueDate(), returnDate, record.getBookPrice());
+            long overdueDays = Math.max(0, ChronoUnit.DAYS.between(record.getDueDate(), returnDate));
 
-        var book = bookCopy.getBook();
-        book.setAvailableCopies(book.getAvailableCopies() + 1);
-        bookRepository.save(book);
+            record.setReturnDate(returnDate);
+            record.setFineAmount(fineAmount);
+            record.setFinePaid(false);
+            record.setPaymentCode(paymentCode);
+            record.setStatus(BorrowStatus.returned);
 
-        ReturnBookResponse response = borrowRecordMapper.toReturnResponse(record);
+            long daysBeforeDue = ChronoUnit.DAYS.between(returnDate, record.getDueDate());
+            BigDecimal refundAmount = BigDecimal.ZERO;
+            long earlyDays = 0;
+
+            if (daysBeforeDue > 0) {
+                earlyDays = Math.min(daysBeforeDue, EARLY_RETURN_THRESHOLD_DAYS);
+                refundAmount = record.getBookPrice()
+                        .multiply(BigDecimal.valueOf(earlyDays))
+                        .divide(BigDecimal.valueOf(EARLY_RETURN_THRESHOLD_DAYS), 0, RoundingMode.FLOOR);
+
+                if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    record.setBookPrice(refundAmount);
+                    record.setBookPaid(false);
+                } else {
+                    record.setBookPrice(BigDecimal.ZERO);
+                    record.setBookPaid(true);
+                }
+            } else {
+                record.setBookPrice(BigDecimal.ZERO);
+                record.setBookPaid(true);
+            }
+
+            totalFine = totalFine.add(fineAmount);
+
+            BookCopy bookCopy = record.getBookCopy();
+            bookCopy.setStatus(BookStatus.available);
+            bookCopyRepository.save(bookCopy);
+
+            var book = bookCopy.getBook();
+            book.setAvailableCopies(book.getAvailableCopies() + 1);
+            bookRepository.save(book);
+
+            borrowRecordRepository.save(record);
+        }
+
+        ReturnBookResponse response = new ReturnBookResponse();
+        response.setPaymentCode(paymentCode);
         response.setReturnDate(returnDate);
-        response.setOverdueDays(overdueDays);
-        response.setFineAmount(fineAmount);
-        response.setHasFinePending(fineAmount.compareTo(BigDecimal.ZERO) > 0);
-        response.setMessage(buildReturnMessage(fineAmount, overdueDays));
+        response.setFineAmount(totalFine);
+        response.setHasFinePending(totalFine.compareTo(BigDecimal.ZERO) > 0);
+        response.setMessage(totalFine.compareTo(BigDecimal.ZERO) > 0
+                ? String.format("Quá hạn. Tổng tiền phạt: %,dđ", totalFine.longValue())
+                : "Trả sách thành công.");
         return response;
     }
 
@@ -132,31 +165,24 @@ public class BorrowRecordService {
             }
 
             Predicate searchCondition = cb.or(searchConditions.toArray(new Predicate[0]));
-
             return cb.and(activeCondition, searchCondition);
         };
     }
 
-    private BigDecimal calculateFine(LocalDate dueDate, LocalDate returnDate) {
-        long overdueDays = ChronoUnit.DAYS.between(dueDate, returnDate);
-        if (overdueDays <= 0) return BigDecimal.ZERO;
-        return FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays));
-    }
+    private BigDecimal calculateFine(LocalDate dueDate, LocalDate returnDate, BigDecimal bookPrice) {
+        long overdueDays = Math.max(0, ChronoUnit.DAYS.between(dueDate, returnDate));
+        if (overdueDays == 0) return BigDecimal.ZERO;
 
-    private String buildReturnMessage(BigDecimal fineAmount, long overdueDays) {
-        if (fineAmount.compareTo(BigDecimal.ZERO) == 0) {
-            return "Trả sách thành công. Không có phí phạt.";
-        }
-        return String.format(
-                "Trả sách thành công. Quá hạn %d ngày. Phí phạt: %,.0f đ (chưa thanh toán).",
-                overdueDays, fineAmount
-        );
+        BigDecimal price = bookPrice != null ? bookPrice : BigDecimal.ZERO;
+        return price
+                .multiply(FINE_RATE_PER_DAY)
+                .multiply(BigDecimal.valueOf(overdueDays))
+                .setScale(0, RoundingMode.CEILING);
     }
 
     public List<BookReturnSearchResponse> getOverdueRecords() {
         List<BorrowRecord> records = borrowRecordRepository
-                .findByStatusAndFineAmountGreaterThanAndFinePaidFalse(
-                        BorrowStatus.returned, BigDecimal.ZERO);
+                .findByStatusAndFineAmountGreaterThanAndFinePaidFalse(BorrowStatus.returned, BigDecimal.ZERO);
 
         return records.stream().map(record -> {
             BookReturnSearchResponse response = borrowRecordMapper.toSearchResponse(record);
@@ -166,14 +192,14 @@ public class BorrowRecordService {
             response.setOverdue(true);
             response.setEstimatedFine(record.getFineAmount());
             response.setPaymentCode(record.getPaymentCode());
+            response.setSessionId(record.getSessionId());
             return response;
         }).toList();
     }
 
     public List<BookReturnSearchResponse> getPaidRecords() {
         List<BorrowRecord> records = borrowRecordRepository
-                .findByStatusAndFineAmountGreaterThanAndFinePaidTrue(
-                        BorrowStatus.returned, BigDecimal.ZERO);
+                .findByStatusAndFineAmountGreaterThanAndFinePaidTrue(BorrowStatus.returned, BigDecimal.ZERO);
 
         return records.stream().map(record -> {
             BookReturnSearchResponse response = borrowRecordMapper.toSearchResponse(record);
@@ -183,6 +209,7 @@ public class BorrowRecordService {
             response.setOverdue(true);
             response.setEstimatedFine(record.getFineAmount());
             response.setPaymentCode(record.getPaymentCode());
+            response.setSessionId(record.getSessionId());
             return response;
         }).toList();
     }
@@ -201,6 +228,34 @@ public class BorrowRecordService {
         }
 
         record.setFinePaid(true);
+        borrowRecordRepository.save(record);
+    }
+
+    public List<BookReturnSearchResponse> getPendingRefunds() {
+        List<BorrowRecord> records = borrowRecordRepository
+                .findByStatusAndBookPriceGreaterThanAndBookPaidFalse(BorrowStatus.returned, BigDecimal.ZERO);
+
+        return records.stream().map(record -> {
+            BookReturnSearchResponse response = borrowRecordMapper.toSearchResponse(record);
+            long earlyDays = Math.max(0, ChronoUnit.DAYS.between(
+                    record.getReturnDate(), record.getDueDate()));
+            response.setRefundAmount(record.getBookPrice());
+            response.setEarlyDays(earlyDays);
+            response.setBookPaid(false);
+            return response;
+        }).toList();
+    }
+
+    @Transactional
+    public void confirmRefund(Integer id) {
+        BorrowRecord record = borrowRecordRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.BORROW_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(record.getBookPaid())) {
+            throw new RuntimeException("Đã xác nhận hoàn tiền rồi");
+        }
+
+        record.setBookPaid(true);
         borrowRecordRepository.save(record);
     }
 }

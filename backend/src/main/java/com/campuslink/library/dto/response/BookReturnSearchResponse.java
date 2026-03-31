@@ -27,4 +27,11 @@ public class BookReturnSearchResponse {
     private long overdueDays;
     private BigDecimal estimatedFine;
     private String paymentCode;
+    private BigDecimal bookPrice;
+    private String status;
+
+    private BigDecimal refundAmount;
+    private Boolean bookPaid;
+    private long earlyDays;
+    private String sessionId;
 }
