@@ -258,4 +258,20 @@ public class BorrowRecordService {
         record.setBookPaid(true);
         borrowRecordRepository.save(record);
     }
+
+
+    public List<BookReturnSearchResponse> getConfirmedRefunds() {
+        List<BorrowRecord> records = borrowRecordRepository
+                .findByStatusAndBookPriceGreaterThanAndBookPaidTrue(BorrowStatus.returned, BigDecimal.ZERO);
+
+        return records.stream().map(record -> {
+            BookReturnSearchResponse response = borrowRecordMapper.toSearchResponse(record);
+            long earlyDays = Math.max(0, ChronoUnit.DAYS.between(
+                    record.getReturnDate(), record.getDueDate()));
+            response.setRefundAmount(record.getBookPrice());
+            response.setEarlyDays(earlyDays);
+            response.setBookPaid(true);
+            return response;
+        }).toList();
+    }
 }

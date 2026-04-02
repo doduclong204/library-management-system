@@ -3,7 +3,6 @@ import type { BookReturnSearchResponse, ReturnBookResponse, ReturnBookRequest } 
 
 const FINE_PER_DAY = 5000;
 
-/** Tính tiền phạt theo ngày quá hạn (đồng bộ với backend) */
 export function calculateFine(dueDateStr: string, returnDateStr: string): number {
   const due = new Date(dueDateStr);
   const ret = new Date(returnDateStr);
@@ -32,6 +31,9 @@ export const borrowRecordApi = {
 
   getPendingRefunds: () =>
     api.get<BookReturnSearchResponse[]>("/borrow-records/pending-refunds"),
+
+  getConfirmedRefunds: () =>
+    api.get<BookReturnSearchResponse[]>("/borrow-records/confirmed-refunds"),
 
   confirmRefund: (id: number) =>
     api.patch(`/borrow-records/${id}/confirm-refund`),

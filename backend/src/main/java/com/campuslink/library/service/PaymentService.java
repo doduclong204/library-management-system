@@ -34,18 +34,15 @@ public class PaymentService {
     @Transactional
     public CreatePaymentResponse createPayment(CreatePaymentRequest request) {
 
-        if (
-                request.getBorrowRecordId() == null &&
-                        (request.getBorrowRecordIds() == null || request.getBorrowRecordIds().isEmpty())
-        ) {
+        if (request.getBorrowRecordId() == null &&
+                (request.getBorrowRecordIds() == null || request.getBorrowRecordIds().isEmpty())) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         String paymentCode = "FINE-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-
         BigDecimal totalAmount = BigDecimal.ZERO;
-        List<BorrowRecord> records;
 
+        List<BorrowRecord> records;
         if (request.getBorrowRecordIds() != null && !request.getBorrowRecordIds().isEmpty()) {
             records = borrowRecordRepository.findAllById(request.getBorrowRecordIds());
         } else {
@@ -58,7 +55,17 @@ public class PaymentService {
             if (Boolean.TRUE.equals(r.getFinePaid())) continue;
 
             if (r.getPaymentCode() != null) {
-                throw new RuntimeException("Đang có giao dịch xử lý");
+                boolean stillPending = paymentRepository
+                        .findByPaymentCode(r.getPaymentCode())
+                        .map(p -> p.getStatus() == PaymentStatus.PENDING)
+                        .orElse(false);
+
+                if (stillPending) {
+                    throw new AppException(ErrorCode.PAYMENT_IN_PROGRESS);
+                }
+
+                // Payment cũ không còn PENDING → reset để cho phép tạo mới
+                r.setPaymentCode(null);
             }
 
             totalAmount = totalAmount.add(r.getFineAmount());
@@ -66,20 +73,12 @@ public class PaymentService {
         }
 
         if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Không có khoản phạt nào cần thanh toán");
+            throw new AppException(ErrorCode.NO_FINE_TO_PAY);
         }
 
         borrowRecordRepository.saveAll(records);
 
-        String qr = String.format(
-                "https://img.vietqr.io/image/%s-%s-%s.png?amount=%s&addInfo=%s&accountName=%s",
-                BANK_ID,
-                ACCOUNT_NO,
-                TEMPLATE,
-                totalAmount.longValue(),
-                paymentCode,
-                ACCOUNT_NAME.replace(" ", "+")
-        );
+        String qr = buildQrUrl(totalAmount, paymentCode);
 
         paymentRepository.save(
                 Payment.builder()
@@ -104,10 +103,10 @@ public class PaymentService {
     public void confirmPayment(ConfirmPaymentRequest request) {
 
         Payment p = paymentRepository.findByPaymentCode(request.getPaymentCode())
-                .orElseThrow(() -> new RuntimeException("Giao dịch không tồn tại"));
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
 
         if (p.getStatus() == PaymentStatus.PAID) {
-            throw new RuntimeException("Đã thanh toán rồi");
+            throw new AppException(ErrorCode.PAYMENT_ALREADY_PAID);
         }
 
         p.setStatus(PaymentStatus.PAID);
@@ -115,7 +114,6 @@ public class PaymentService {
         paymentRepository.save(p);
 
         List<BorrowRecord> records = borrowRecordRepository.findByPaymentCode(p.getPaymentCode());
-
         records.forEach(r -> r.setFinePaid(true));
         borrowRecordRepository.saveAll(records);
     }
@@ -123,18 +121,15 @@ public class PaymentService {
     @Transactional
     public CreatePaymentResponse createBookPayment(CreatePaymentRequest request) {
 
-        if (
-                request.getBorrowRecordId() == null &&
-                        (request.getBorrowRecordIds() == null || request.getBorrowRecordIds().isEmpty())
-        ) {
+        if (request.getBorrowRecordId() == null &&
+                (request.getBorrowRecordIds() == null || request.getBorrowRecordIds().isEmpty())) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         String paymentCode = "BOOK-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-
         BigDecimal totalAmount = BigDecimal.ZERO;
-        List<BorrowRecord> records;
 
+        List<BorrowRecord> records;
         if (request.getBorrowRecordIds() != null && !request.getBorrowRecordIds().isEmpty()) {
             records = borrowRecordRepository.findAllById(request.getBorrowRecordIds());
         } else {
@@ -147,7 +142,17 @@ public class PaymentService {
             if (Boolean.TRUE.equals(r.getBookPaid())) continue;
 
             if (r.getBookPaymentCode() != null) {
-                throw new RuntimeException("Đang có giao dịch sách đang xử lý");
+                boolean stillPending = paymentRepository
+                        .findByPaymentCode(r.getBookPaymentCode())
+                        .map(p -> p.getStatus() == PaymentStatus.PENDING)
+                        .orElse(false);
+
+                if (stillPending) {
+                    throw new AppException(ErrorCode.BOOK_PAYMENT_IN_PROGRESS);
+                }
+
+                // Payment cũ không còn PENDING → reset để cho phép tạo mới
+                r.setBookPaymentCode(null);
             }
 
             totalAmount = totalAmount.add(r.getBookPrice());
@@ -155,20 +160,12 @@ public class PaymentService {
         }
 
         if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Không có tiền sách nào cần thanh toán");
+            throw new AppException(ErrorCode.NO_BOOK_TO_PAY);
         }
 
         borrowRecordRepository.saveAll(records);
 
-        String qr = String.format(
-                "https://img.vietqr.io/image/%s-%s-%s.png?amount=%s&addInfo=%s&accountName=%s",
-                BANK_ID,
-                ACCOUNT_NO,
-                TEMPLATE,
-                totalAmount.longValue(),
-                paymentCode,
-                ACCOUNT_NAME.replace(" ", "+")
-        );
+        String qr = buildQrUrl(totalAmount, paymentCode);
 
         paymentRepository.save(
                 Payment.builder()
@@ -193,10 +190,10 @@ public class PaymentService {
     public void confirmBookPayment(ConfirmPaymentRequest request) {
 
         Payment p = paymentRepository.findByPaymentCode(request.getPaymentCode())
-                .orElseThrow(() -> new RuntimeException("Giao dịch không tồn tại"));
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
 
         if (p.getStatus() == PaymentStatus.PAID) {
-            throw new RuntimeException("Đã thanh toán rồi");
+            throw new AppException(ErrorCode.PAYMENT_ALREADY_PAID);
         }
 
         p.setStatus(PaymentStatus.PAID);
@@ -206,5 +203,17 @@ public class PaymentService {
         List<BorrowRecord> records = borrowRecordRepository.findByBookPaymentCode(p.getPaymentCode());
         records.forEach(r -> r.setBookPaid(true));
         borrowRecordRepository.saveAll(records);
+    }
+
+    private String buildQrUrl(BigDecimal amount, String paymentCode) {
+        return String.format(
+                "https://img.vietqr.io/image/%s-%s-%s.png?amount=%s&addInfo=%s&accountName=%s",
+                BANK_ID,
+                ACCOUNT_NO,
+                TEMPLATE,
+                amount.longValue(),
+                paymentCode,
+                ACCOUNT_NAME.replace(" ", "+")
+        );
     }
 }

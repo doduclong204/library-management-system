@@ -3,6 +3,7 @@ package com.campuslink.library.controller;
 import com.campuslink.library.dto.request.ReturnBookRequest;
 import com.campuslink.library.dto.response.BookReturnSearchResponse;
 import com.campuslink.library.dto.response.ReturnBookResponse;
+import com.campuslink.library.dto.response.api.ApiResponse;
 import com.campuslink.library.service.BorrowRecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -65,5 +66,12 @@ public class BorrowRecordController {
     public ResponseEntity<Void> confirmRefund(@PathVariable Integer id) {
         borrowRecordService.confirmRefund(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/confirmed-refunds")
+    public ApiResponse<List<BookReturnSearchResponse>> getConfirmedRefunds() {
+        return ApiResponse.<List<BookReturnSearchResponse>>builder()
+                .data(borrowRecordService.getConfirmedRefunds())
+                .build();
     }
 }
