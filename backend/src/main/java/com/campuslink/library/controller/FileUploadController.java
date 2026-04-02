@@ -49,7 +49,7 @@ public class FileUploadController {
         Files.copy(file.getInputStream(), uploadPath.resolve(fileName),
                 StandardCopyOption.REPLACE_EXISTING);
 
-        return ResponseEntity.ok(Map.of("url", "/api/v1/images/" + fileName));
+        return ResponseEntity.ok(Map.of("url", "/images/" + fileName));
     }
 
     @PostMapping("/video")
@@ -72,7 +72,7 @@ public class FileUploadController {
         Files.copy(file.getInputStream(), uploadPath.resolve(fileName),
                 StandardCopyOption.REPLACE_EXISTING);
 
-        return ResponseEntity.ok(Map.of("url", "/api/v1/videos/" + fileName));
+        return ResponseEntity.ok(Map.of("url", "/videos/" + fileName));
     }
 
     private String getExt(String filename, String defaultExt) {

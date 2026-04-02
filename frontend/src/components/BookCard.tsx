@@ -1,5 +1,6 @@
 import type { Book } from "@/types";
 import { BookOpen } from "lucide-react";
+import { buildImageUrl } from "@/lib/imageUrl";
 
 interface BookCardProps {
   book: Book;
@@ -14,11 +15,7 @@ const BookCard = ({ book, onAction, actionLabel, onClick }: BookCardProps) => {
     ? book.authors.join(", ")
     : (book as any).author ?? "";
 
-  const imageUrl = book.image_url
-    ? book.image_url.startsWith("http")
-      ? book.image_url
-      : `http://localhost:8080/api/v1${book.image_url.replace("/api/v1", "")}`
-    : null;
+  const imageUrl = buildImageUrl(book.image_url);
 
   return (
     <div

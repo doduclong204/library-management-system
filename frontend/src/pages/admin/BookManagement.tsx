@@ -21,11 +21,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import type { Book, BookRequest } from "@/types";
+import { buildImageUrl } from "@/lib/imageUrl";
 import { getAccessToken } from "@/store/authStore";
 
 const GENRES = ["Classic", "Fantasy", "Dystopian", "Romance", "Science Fiction", "Fiction", "Non-Fiction", "Philosophy", "Satire"];
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080/api/v1";
+const BASE_URL = API_URL.replace(/\/api\/v1\/?$/, ""); // dùng cho upload endpoint
 
 const EMPTY_FORM: BookRequest = {
   isbn: "",
@@ -256,7 +258,7 @@ const BookManagement = () => {
                   <TableCell>
                     {book.image_url ? (
                       <img
-                        src={`${BASE_URL}${book.image_url}`}
+                        src={buildImageUrl(book.image_url)!}
                         alt={book.title}
                         className="w-10 h-14 object-cover rounded shadow-sm"
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -329,7 +331,7 @@ const BookManagement = () => {
 
       {/* Form thêm / sửa sách */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Chỉnh sửa sách" : "Thêm sách mới"}</DialogTitle>
             <DialogDescription>
@@ -344,7 +346,7 @@ const BookManagement = () => {
               {form.image_url ? (
                 <div className="relative mt-1.5 inline-block">
                   <img
-                    src={`${BASE_URL}${form.image_url}`}
+                    src={buildImageUrl(form.image_url)!}
                     alt="preview"
                     className="h-36 w-auto rounded-md border object-cover shadow-sm"
                   />
