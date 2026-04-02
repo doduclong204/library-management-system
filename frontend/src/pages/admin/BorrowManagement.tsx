@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import { borrowApi, patronApi, bookApi } from "@/services/apiServices";
 import { paymentApi, type CreatePaymentResponse } from "@/services/paymentApi";
 import type { PatronSearchResult, BorrowRequest, BorrowResponse, Book } from "@/types";
@@ -20,6 +21,55 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils";
 import { format, addDays } from "date-fns";
 
+const POLL_INTERVAL = 5000;
+const POLL_TIMEOUT  = 5 * 60 * 1000;
+
+// ─── Countdown Timer ──────────────────────────────────────────────────────────
+const CountdownTimer = ({ durationMs, onExpired }: { durationMs: number; onExpired: () => void }) => {
+  const [remaining, setRemaining] = useState(durationMs);
+  const onExpiredRef = useRef(onExpired);
+  onExpiredRef.current = onExpired;
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const left = durationMs - (Date.now() - startTime);
+      if (left <= 0) {
+        setRemaining(0);
+        clearInterval(interval);
+        onExpiredRef.current();
+      } else {
+        setRemaining(left);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [durationMs]);
+
+  const totalSecs = Math.ceil(remaining / 1000);
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  const pct = remaining / durationMs;
+
+  const color = pct > 0.5 ? "text-green-600 dark:text-green-400" : pct > 0.2 ? "text-yellow-500 dark:text-yellow-400" : "text-destructive";
+  const ringColor = pct > 0.5 ? "stroke-green-500" : pct > 0.2 ? "stroke-yellow-500" : "stroke-destructive";
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - pct);
+
+  return (
+    <div className={`flex items-center gap-2 text-sm font-medium ${color}`}>
+      <svg width="44" height="44" className="-rotate-90">
+        <circle cx="22" cy="22" r={radius} fill="none" stroke="currentColor" strokeWidth="3" className="opacity-15" />
+        <circle cx="22" cy="22" r={radius} fill="none" strokeWidth="3" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" className={`transition-all duration-500 ${ringColor}`} />
+      </svg>
+      <div className="flex flex-col leading-tight">
+        <span className="text-xs text-muted-foreground font-normal">Hết hạn sau</span>
+        <span className="tabular-nums text-base">{String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}</span>
+      </div>
+    </div>
+  );
+};
+
 const BorrowManagement = () => {
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
@@ -39,11 +89,14 @@ const BorrowManagement = () => {
   const [isSearchingPatron, setIsSearchingPatron] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // QR payment dialog
   const [qrDialog, setQrDialog] = useState(false);
   const [qrData, setQrData] = useState<CreatePaymentResponse | null>(null);
   const [isLoadingQr, setIsLoadingQr] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [pollingEnabled, setPollingEnabled] = useState(false);
+  const [paymentDone, setPaymentDone] = useState(false);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [countdownKey, setCountdownKey] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
@@ -153,6 +206,12 @@ const BorrowManagement = () => {
 
   useEffect(() => { return () => { stopCamera(); }; }, []);
 
+  useEffect(() => {
+    return () => {
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
+  }, []);
+
   const addBook = (book: Book) => {
     if (book.available_copies <= 0) {
       toast({ title: "Sách đã hết", description: `${book.title} không còn bản sao trống.`, variant: "destructive" });
@@ -167,7 +226,6 @@ const BorrowManagement = () => {
     setSelectedBooks(prev => prev.filter(b => b.id !== bookId));
   };
 
-  // Tổng giá tiền sách đã chọn
   const totalBookPrice = selectedBooks.reduce((sum, b) => sum + (b.price ?? 0), 0);
 
   const handleBorrow = async () => {
@@ -194,15 +252,25 @@ const BorrowManagement = () => {
         description: `${results.length} cuốn → ${selectedPatron.fullName}. Hạn trả: ${format(dueDate, "dd/MM/yyyy")}`,
       });
 
-      // Nếu có giá sách → mở QR thanh toán tiền sách
       if (totalBookPrice > 0) {
         const borrowRecordIds = results.map((r: BorrowResponse) => r.id).filter(Boolean);
         if (borrowRecordIds.length > 0) {
           setIsLoadingQr(true);
           setQrDialog(true);
+          setPaymentDone(false);
           try {
             const qrRes = await paymentApi.createBookPayment({ borrowRecordIds });
             setQrData(qrRes.data);
+            setPollingEnabled(true);
+            setCountdownKey(k => k + 1);
+            pollTimeoutRef.current = setTimeout(() => {
+              setPollingEnabled(false);
+              toast({
+                title: "Hết thời gian chờ",
+                description: "Vui lòng xác nhận thanh toán thủ công nếu đã chuyển khoản.",
+                variant: "destructive",
+              });
+            }, POLL_TIMEOUT);
           } catch {
             toast({ title: "Không thể tạo QR thanh toán sách", variant: "destructive" });
             setQrDialog(false);
@@ -230,6 +298,30 @@ const BorrowManagement = () => {
     }
   };
 
+  const { data: statusData } = useQuery({
+    queryKey: ["payment-status-book", qrData?.paymentCode],
+    queryFn: async () => {
+      const res = await paymentApi.getStatus(qrData!.paymentCode);
+      return res.data;
+    },
+    enabled: pollingEnabled && !!qrData?.paymentCode,
+    refetchInterval: POLL_INTERVAL,
+    refetchIntervalInBackground: false,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (statusData?.paid && pollingEnabled) {
+      setPollingEnabled(false);
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+      setPaymentDone(true);
+      toast({
+        title: "Thanh toán thành công! 🎉",
+        description: "Tiền sách đã được ghi nhận tự động.",
+      });
+    }
+  }, [statusData]);
+
   const handleCopyCode = () => {
     if (!qrData) return;
     navigator.clipboard.writeText(qrData.paymentCode);
@@ -237,16 +329,23 @@ const BorrowManagement = () => {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  const handleConfirmPayment = async () => {
-    if (!qrData) return;
-    try {
-      await paymentApi.confirmBookPayment(qrData.paymentCode);
-      toast({ title: "Xác nhận thanh toán thành công! ✅" });
-      setQrDialog(false);
-      setQrData(null);
-    } catch {
-      toast({ title: "Lỗi xác nhận", description: "Vui lòng thử lại.", variant: "destructive" });
-    }
+  const handleCloseQrDialog = () => {
+    setQrDialog(false);
+    setQrData(null);
+    setPollingEnabled(false);
+    setPaymentDone(false);
+    if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+  };
+
+  const handleCountdownExpired = () => {
+    if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    setPollingEnabled(false);
+    toast({
+      title: "Hết thời gian chờ",
+      description: "Vui lòng xác nhận thanh toán thủ công nếu đã chuyển khoản.",
+      variant: "destructive",
+    });
+    setQrDialog(false);
   };
 
   return (
@@ -258,7 +357,6 @@ const BorrowManagement = () => {
         <p className="text-muted-foreground mt-1">Chọn nhiều sách cùng lúc để tạo 1 phiếu mượn.</p>
       </div>
 
-      {/* Book search */}
       <div className="glass-card p-5 max-w-xl">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -307,7 +405,6 @@ const BorrowManagement = () => {
           />
         </div>
 
-        {/* Dropdown */}
         {showBookDropdown && (
           <ul className="mt-2 border border-border rounded-lg overflow-hidden shadow-md max-h-64 overflow-y-auto">
             {matchedBooks.length === 0 ? (
@@ -334,7 +431,6 @@ const BorrowManagement = () => {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {/* Hiển thị giá sách */}
                         {(b.price ?? 0) > 0 && (
                           <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                             {(b.price ?? 0).toLocaleString("vi-VN")}đ
@@ -347,9 +443,7 @@ const BorrowManagement = () => {
                           {b.available_copies > 0 ? `Còn ${b.available_copies}` : "Hết"}
                         </Badge>
                         {b.available_copies > 0 && (
-                          <span className="text-primary">
-                            <Plus className="w-4 h-4" />
-                          </span>
+                          <span className="text-primary"><Plus className="w-4 h-4" /></span>
                         )}
                       </div>
                     </button>
@@ -360,7 +454,6 @@ const BorrowManagement = () => {
           </ul>
         )}
 
-        {/* Danh sách sách đã chọn */}
         {selectedBooks.length > 0 && (
           <div className="mt-3 space-y-2">
             <p className="text-xs text-muted-foreground font-medium">
@@ -373,7 +466,6 @@ const BorrowManagement = () => {
                   <span className="font-medium truncate">{b.title}</span>
                   <span className="text-xs text-muted-foreground">{b.isbn}</span>
                 </div>
-                {/* Giá sách trong danh sách đã chọn */}
                 {(b.price ?? 0) > 0 && (
                   <span className="text-xs font-semibold text-amber-600 shrink-0">
                     {(b.price ?? 0).toLocaleString("vi-VN")}đ
@@ -387,8 +479,6 @@ const BorrowManagement = () => {
                 </button>
               </div>
             ))}
-
-            {/* Tổng tiền sách */}
             {totalBookPrice > 0 && (
               <div className="flex items-center justify-between p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
                 <span className="text-xs text-amber-700 font-medium">💰 Tổng tiền sách:</span>
@@ -401,7 +491,6 @@ const BorrowManagement = () => {
         )}
       </div>
 
-      {/* Patron + dueDate + submit */}
       <div className="glass-card p-5 max-w-xl space-y-4">
         <div>
           <Label className="flex items-center gap-2 mb-1.5">
@@ -506,7 +595,6 @@ const BorrowManagement = () => {
           </Popover>
         </div>
 
-        {/* Summary */}
         {selectedBooks.length > 0 && selectedPatron && (
           <div className="p-3 bg-muted/30 rounded-lg text-sm space-y-1 border border-border">
             <p className="font-medium">Tóm tắt phiếu mượn:</p>
@@ -528,14 +616,12 @@ const BorrowManagement = () => {
           disabled={selectedBooks.length === 0 || !selectedPatron || isSubmitting}
         >
           {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <BookOpen className="w-5 h-5" />}
-          {selectedBooks.length > 1
-            ? `Xử lý mượn ${selectedBooks.length} sách`
-            : "Xử lý mượn sách"}
+          {selectedBooks.length > 1 ? `Xử lý mượn ${selectedBooks.length} sách` : "Xử lý mượn sách"}
         </Button>
       </div>
 
       {/* QR Payment Dialog */}
-      <Dialog open={qrDialog} onOpenChange={setQrDialog}>
+      <Dialog open={qrDialog} onOpenChange={handleCloseQrDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
@@ -543,23 +629,19 @@ const BorrowManagement = () => {
             </DialogTitle>
           </DialogHeader>
 
-          {isLoadingQr ? (
+          {isLoadingQr && (
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">Đang tạo mã QR...</p>
             </div>
-          ) : qrData ? (
+          )}
+
+          {!isLoadingQr && qrData && !paymentDone && (
             <div className="space-y-4">
-              {/* QR Code */}
               <div className="flex justify-center">
-                <img
-                  src={qrData.qrUrl}
-                  alt="QR thanh toán"
-                  className="w-56 h-56 rounded-xl border border-border shadow-sm"
-                />
+                <img src={qrData.qrUrl} alt="QR thanh toán" className="w-56 h-56 rounded-xl border border-border shadow-sm" />
               </div>
 
-              {/* Payment info */}
               <div className="space-y-2 text-sm bg-muted/30 rounded-xl p-3 border border-border">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Ngân hàng</span>
@@ -576,12 +658,11 @@ const BorrowManagement = () => {
                 <div className="flex justify-between items-center border-t border-border pt-2 mt-1">
                   <span className="text-muted-foreground">Số tiền</span>
                   <span className="text-lg font-bold text-amber-600">
-                    {qrData.amount.toLocaleString("vi-VN")}đ
+                    {Number(qrData.amount).toLocaleString("vi-VN")}đ
                   </span>
                 </div>
               </div>
 
-              {/* Payment code */}
               <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
                 <span className="text-xs text-muted-foreground flex-1">Mã GD:</span>
                 <span className="text-sm font-mono font-bold text-primary">{qrData.paymentCode}</span>
@@ -590,21 +671,32 @@ const BorrowManagement = () => {
                 </button>
               </div>
 
-              <p className="text-xs text-center text-muted-foreground">
-                Quét mã QR hoặc chuyển khoản đúng <strong>nội dung</strong> để xác nhận tự động
-              </p>
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setQrDialog(false); setQrData(null); }}>
-                  Đóng
-                </Button>
-                <Button className="flex-1 gap-2" onClick={handleConfirmPayment}>
-                  <Check className="w-4 h-4" /> Xác nhận đã thanh toán
-                </Button>
+              <div className="flex items-center justify-between px-1">
+                <CountdownTimer
+                  key={countdownKey}
+                  durationMs={POLL_TIMEOUT}
+                  onExpired={handleCountdownExpired}
+                />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Đang chờ tự động...
+                </div>
               </div>
+
+              <Button variant="outline" className="w-full" onClick={handleCloseQrDialog}>
+                Đóng
+              </Button>
             </div>
-          ) : null}
+          )}
+
+          {!isLoadingQr && paymentDone && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <CheckCircle className="w-12 h-12 text-success" />
+              <p className="text-success font-semibold text-base">Thanh toán thành công!</p>
+              <p className="text-xs text-muted-foreground">Hệ thống đã tự động ghi nhận tiền sách.</p>
+              <Button onClick={handleCloseQrDialog}>Đóng</Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

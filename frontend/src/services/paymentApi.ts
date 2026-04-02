@@ -14,6 +14,13 @@ export interface CreatePaymentRequest {
   borrowRecordIds?: number[];
 }
 
+export interface PaymentStatusResponse {
+  paymentCode: string;
+  status: "PENDING" | "PAID";
+  paid: boolean;
+  paidAt: string | null;
+}
+
 export const paymentApi = {
   // === Thanh toán tiền PHẠT ===
   create: (data: CreatePaymentRequest) => {
@@ -36,4 +43,8 @@ export const paymentApi = {
 
   confirmBookPayment: (paymentCode: string) =>
     api.post<void>("/payments/book/confirm", { paymentCode }),
+
+  // === Polling trạng thái ===
+  getStatus: (paymentCode: string) =>
+    api.get<PaymentStatusResponse>(`/payments/status/${paymentCode}`),
 };

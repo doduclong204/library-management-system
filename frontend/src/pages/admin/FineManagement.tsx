@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { borrowRecordApi } from "@/services/borrowRecordService";
 import { paymentApi, type CreatePaymentResponse } from "@/services/paymentApi";
@@ -15,6 +15,7 @@ import {
   ArrowLeftRight,
   ChevronLeft,
   ChevronRight,
+  Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,8 @@ import {
 } from "@/components/ui/dialog";
 
 const PAGE_SIZE = 10;
+const POLL_INTERVAL = 5000;
+const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 phút
 
 const vnd = (amount: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
@@ -57,27 +60,103 @@ const Pagination = ({
       <span className="text-xs text-muted-foreground">
         {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} / {total}
       </span>
-      <Button
-        size="icon"
-        variant="outline"
-        className="w-7 h-7"
-        disabled={page === 1}
-        onClick={() => onChange(page - 1)}
-      >
+      <Button size="icon" variant="outline" className="w-7 h-7" disabled={page === 1} onClick={() => onChange(page - 1)}>
         <ChevronLeft className="w-4 h-4" />
       </Button>
-      <Button
-        size="icon"
-        variant="outline"
-        className="w-7 h-7"
-        disabled={page === totalPages}
-        onClick={() => onChange(page + 1)}
-      >
+      <Button size="icon" variant="outline" className="w-7 h-7" disabled={page === totalPages} onClick={() => onChange(page + 1)}>
         <ChevronRight className="w-4 h-4" />
       </Button>
     </div>
   );
 };
+
+// ─── Countdown Timer Component ────────────────────────────────────────────────
+
+const CountdownTimer = ({
+  durationMs,
+  onExpired,
+}: {
+  durationMs: number;
+  onExpired: () => void;
+}) => {
+  const [remaining, setRemaining] = useState(durationMs);
+  const onExpiredRef = useRef(onExpired);
+  onExpiredRef.current = onExpired;
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const left = durationMs - elapsed;
+      if (left <= 0) {
+        setRemaining(0);
+        clearInterval(interval);
+        onExpiredRef.current();
+      } else {
+        setRemaining(left);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [durationMs]);
+
+  const totalSecs = Math.ceil(remaining / 1000);
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  const pct = remaining / durationMs;
+
+  const color =
+    pct > 0.5
+      ? "text-green-600 dark:text-green-400"
+      : pct > 0.2
+      ? "text-yellow-500 dark:text-yellow-400"
+      : "text-destructive";
+
+  const ringColor =
+    pct > 0.5
+      ? "stroke-green-500"
+      : pct > 0.2
+      ? "stroke-yellow-500"
+      : "stroke-destructive";
+
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - pct);
+
+  return (
+    <div className={`flex items-center gap-2 text-sm font-medium ${color}`}>
+      <svg width="44" height="44" className="-rotate-90">
+        <circle
+          cx="22"
+          cy="22"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          className="opacity-15"
+        />
+        <circle
+          cx="22"
+          cy="22"
+          r={radius}
+          fill="none"
+          strokeWidth="3"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+          className={`transition-all duration-500 ${ringColor}`}
+        />
+      </svg>
+      <div className="flex flex-col leading-tight">
+        <span className="text-xs text-muted-foreground font-normal">Hết hạn sau</span>
+        <span className="tabular-nums text-base">
+          {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// ─── PaymentModal ────────────────────────────────────────────────────────────
 
 interface PaymentModalProps {
   borrowRecordIds?: number[];
@@ -87,11 +166,16 @@ interface PaymentModalProps {
 
 const PaymentModal = ({ borrowRecordIds, onClose, onConfirmed }: PaymentModalProps) => {
   const { toast } = useToast();
-  const [step, setStep] = useState<"loading" | "showQR" | "confirming" | "done">("loading");
+  const [step, setStep] = useState<"loading" | "showQR" | "done">("loading");
   const [qrData, setQrData] = useState<CreatePaymentResponse | null>(null);
+  const [pollingEnabled, setPollingEnabled] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [queryKey] = useState(() => ["create-payment", borrowRecordIds, Date.now()]);
+
+  // ── Bước 1: Tạo QR ────────────────────────────────────────────────────────
   const { data: qrResult, error: qrError } = useQuery({
-    queryKey: ["create-payment", borrowRecordIds],
+    queryKey,
     queryFn: async () => {
       const res = await paymentApi.create({ borrowRecordIds });
       return res.data;
@@ -104,13 +188,26 @@ const PaymentModal = ({ borrowRecordIds, onClose, onConfirmed }: PaymentModalPro
     if (qrResult && step === "loading") {
       setQrData(qrResult);
       setStep("showQR");
+      setPollingEnabled(true);
+
+      // Timeout 5 phút — countdown sẽ gọi callback này
+      timeoutRef.current = setTimeout(() => {
+        setPollingEnabled(false);
+        toast({
+          title: "Hết thời gian chờ",
+          description: "Vui lòng tạo lại QR thanh toán.",
+          variant: "destructive",
+        });
+        onClose();
+      }, POLL_TIMEOUT_MS);
     }
   }, [qrResult]);
 
   useEffect(() => {
     if (qrError && step === "loading") {
+      const status = (qrError as any)?.response?.status;
       toast({
-        title: "Không thể tạo QR",
+        title: status === 409 ? "Không thể tạo giao dịch" : "Không thể tạo QR",
         description: (qrError as any)?.response?.data?.message ?? "Vui lòng thử lại.",
         variant: "destructive",
       });
@@ -118,22 +215,50 @@ const PaymentModal = ({ borrowRecordIds, onClose, onConfirmed }: PaymentModalPro
     }
   }, [qrError]);
 
-  const confirmMutation = useMutation({
-    mutationFn: () => paymentApi.confirm(qrData!.paymentCode),
-    onSuccess: () => {
-      setStep("done");
-      toast({ title: "Đã xác nhận thu tiền", description: "Khoản phạt đã được ghi nhận." });
-      onConfirmed();
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  // ── Bước 2: Polling trạng thái payment ────────────────────────────────────
+  const { data: statusData } = useQuery({
+    queryKey: ["payment-status", qrData?.paymentCode],
+    queryFn: async () => {
+      const res = await paymentApi.getStatus(qrData!.paymentCode);
+      return res.data;
     },
-    onError: (err: any) => {
-      toast({
-        title: "Xác nhận thất bại",
-        description: err?.response?.data?.message ?? "Vui lòng thử lại.",
-        variant: "destructive",
-      });
-    },
+    enabled: pollingEnabled && !!qrData?.paymentCode,
+    refetchInterval: POLL_INTERVAL,
+    refetchIntervalInBackground: false,
+    retry: false,
   });
 
+  useEffect(() => {
+    if ((statusData as any)?.paid && step === "showQR") {
+      setPollingEnabled(false);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setStep("done");
+      toast({
+        title: "Thanh toán thành công! 🎉",
+        description: "Khoản phạt đã được ghi nhận tự động.",
+      });
+      onConfirmed();
+    }
+  }, [statusData]);
+
+  const handleCountdownExpired = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setPollingEnabled(false);
+    toast({
+      title: "Hết thời gian chờ",
+      description: "Vui lòng tạo lại QR thanh toán.",
+      variant: "destructive",
+    });
+    onClose();
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-sm">
@@ -151,7 +276,7 @@ const PaymentModal = ({ borrowRecordIds, onClose, onConfirmed }: PaymentModalPro
           </div>
         )}
 
-        {(step === "showQR" || step === "confirming") && qrData && (
+        {step === "showQR" && qrData && (
           <div className="flex flex-col items-center gap-4">
             <img src={qrData.qrUrl} className="w-52 h-52 rounded-lg border object-contain" />
             <div className="w-full bg-muted/50 px-4 py-3 space-y-2 text-sm rounded-lg">
@@ -172,21 +297,26 @@ const PaymentModal = ({ borrowRecordIds, onClose, onConfirmed }: PaymentModalPro
                 <code>{qrData.paymentCode}</code>
               </div>
             </div>
-            <Button
-              className="w-full"
-              onClick={() => { setStep("confirming"); confirmMutation.mutate(); }}
-              disabled={confirmMutation.isPending}
-            >
-              {confirmMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-              Xác nhận đã thu tiền
-            </Button>
+
+            {/* Countdown + polling status */}
+            <div className="flex items-center justify-between w-full px-1">
+              <CountdownTimer
+                durationMs={POLL_TIMEOUT_MS}
+                onExpired={handleCountdownExpired}
+              />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Đang chờ thanh toán...
+              </div>
+            </div>
           </div>
         )}
 
         {step === "done" && (
           <div className="flex flex-col items-center gap-3 py-8">
-            <CheckCircle className="w-8 h-8 text-success" />
-            <p className="text-success font-medium">Đã ghi nhận thanh toán</p>
+            <CheckCircle className="w-10 h-10 text-success" />
+            <p className="text-success font-medium text-base">Thanh toán thành công!</p>
+            <p className="text-xs text-muted-foreground">Hệ thống đã tự động ghi nhận.</p>
             <Button onClick={onClose}>Đóng</Button>
           </div>
         )}
@@ -194,6 +324,8 @@ const PaymentModal = ({ borrowRecordIds, onClose, onConfirmed }: PaymentModalPro
     </Dialog>
   );
 };
+
+// ─── RefundModal ─────────────────────────────────────────────────────────────
 
 interface RefundModalProps {
   borrowRecordIds: number[];
@@ -262,11 +394,7 @@ const RefundModal = ({ borrowRecordIds, totalRefund, userName, onClose, onConfir
               onClick={() => confirmAllMutation.mutate()}
               disabled={confirmAllMutation.isPending}
             >
-              {confirmAllMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle className="w-4 h-4" />
-              )}
+              {confirmAllMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
               Xác nhận đã hoàn tiền
             </Button>
           </div>
@@ -281,6 +409,8 @@ const RefundModal = ({ borrowRecordIds, totalRefund, userName, onClose, onConfir
     </Dialog>
   );
 };
+
+// ─── FineManagement ───────────────────────────────────────────────────────────
 
 type Tab = "fines" | "refunds";
 

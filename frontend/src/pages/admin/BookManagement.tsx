@@ -232,7 +232,7 @@ const BookManagement = () => {
               <TableHead className="hidden md:table-cell">ISBN</TableHead>
               <TableHead>Thể loại</TableHead>
               {/* ← Cột giá sách */}
-              <TableHead className="hidden md:table-cell text-amber-600">Giá sách</TableHead>
+              <TableHead className="hidden md:table-cell text-amber-600">Giá mượn</TableHead>
               <TableHead>Tình trạng</TableHead>
               <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
