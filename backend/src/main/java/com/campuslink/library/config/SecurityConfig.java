@@ -37,14 +37,19 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        // Webhook SePay — phải permit dù filter đã handle trước security
+                        .requestMatchers("/api/webhook/sepay").permitAll()
+                        // Auth
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        // Static assets
                         .requestMatchers("/images/**").permitAll()
                         .requestMatchers("/videos/**").permitAll()
-                        .requestMatchers("/borrows/**").permitAll()
-                        .requestMatchers("/books/**").permitAll()
-                        .requestMatchers("/borrow-records/**").permitAll()
-                        .requestMatchers("/patrons/**").permitAll()
-                        .requestMatchers("/ocr/**").permitAll()  // ← dòng mới
+                        // Public APIs
+                        .requestMatchers("/api/v1/borrows/**").permitAll()
+                        .requestMatchers("/api/v1/books/**").permitAll()
+                        .requestMatchers("/api/v1/borrow-records/**").permitAll()
+                        .requestMatchers("/api/v1/patrons/**").permitAll()
+                        .requestMatchers("/api/v1/ocr/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/borrow-records")
+@RequestMapping("/api/v1/borrow-records")
 @RequiredArgsConstructor
 public class BorrowRecordController {
 

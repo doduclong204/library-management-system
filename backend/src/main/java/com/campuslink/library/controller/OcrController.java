@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/ocr")
+@RequestMapping("/api/v1/ocr")
 @RequiredArgsConstructor
 public class OcrController {
 

@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/upload")
+@RequestMapping("/api/v1/upload")
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class FileUploadController {
 
