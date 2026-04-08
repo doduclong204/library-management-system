@@ -1540,7 +1540,6 @@ classDiagram
 
 *Hình 2.23. Biểu đồ lớp phân tích – OCR – Dữ liệu số*
 
-
 ## 2.4. Thiết kế giao diện
 
 Phần này trình bày thiết kế giao diện người dùng của Hệ thống Quản lý Thư viện. Giao diện được xây dựng theo hướng trực quan, thân thiện và phù hợp với từng nhóm người dùng: Sinh viên (không cần đăng nhập) và Thủ thư (cần xác thực).
@@ -1551,7 +1550,7 @@ Phần này trình bày thiết kế giao diện người dùng của Hệ thố
 
 Trang chủ là điểm tiếp cận đầu tiên của Sinh viên. Giao diện hiển thị thanh tìm kiếm nổi bật ở trung tâm, kèm theo các nút lọc theo thể loại và danh sách sách nổi bật. Sinh viên có thể tìm kiếm sách ngay mà không cần đăng nhập.
 
-![Trang chủ](Trangchu.png)
+![Trang chủ](images/Trangchu.png)
 
 *Hình 2.24. Giao diện Trang chủ*
 
@@ -1561,7 +1560,7 @@ Trang chủ là điểm tiếp cận đầu tiên của Sinh viên. Giao diện 
 
 Màn hình Tìm kiếm cho phép Sinh viên nhập từ khóa theo tên sách, tác giả hoặc ISBN. Kết quả hiển thị dưới dạng danh sách thẻ sách, mỗi thẻ cho thấy ảnh bìa, tên sách, tác giả, thể loại và trạng thái còn/hết. Sinh viên có thể nhấn vào thẻ để xem chi tiết tình trạng sách.
 
-![Tìm kiếm sách](TIMKIEM.png)
+![Tìm kiếm sách](images/TIMKIEM.png)
 
 *Hình 2.25. Giao diện Tìm kiếm sách*
 
@@ -1571,7 +1570,7 @@ Màn hình Tìm kiếm cho phép Sinh viên nhập từ khóa theo tên sách, t
 
 Sau khi đăng nhập thành công, Thủ thư được chuyển đến Dashboard – trung tâm điều hành của hệ thống. Giao diện hiển thị các chỉ số tổng quan: tổng số sách, số sách đang mượn, số giao dịch quá hạn và doanh thu phạt trong tháng. Phía dưới là danh sách các giao dịch mượn gần đây và cảnh báo sách sắp hết hạn.
 
-![Dashboard](Dashboard.png)
+![Dashboard](images/Dashboard.png)
 
 *Hình 2.26. Giao diện Dashboard – Thủ thư*
 
@@ -1581,7 +1580,7 @@ Sau khi đăng nhập thành công, Thủ thư được chuyển đến Dashboar
 
 Phần mở rộng của Dashboard trình bày biểu đồ thống kê lượt mượn theo tuần/tháng, giúp Thủ thư nắm bắt xu hướng sử dụng thư viện và các đầu sách phổ biến nhất.
 
-![Dashboard chi tiết](dashboard2.png)
+![Dashboard chi tiết](images/dashboard2.png)
 
 *Hình 2.27. Giao diện Dashboard – Thống kê chi tiết*
 
@@ -1591,7 +1590,7 @@ Phần mở rộng của Dashboard trình bày biểu đồ thống kê lượt 
 
 Màn hình Quản lý sách cho phép Thủ thư xem toàn bộ danh mục sách, tìm kiếm và lọc theo thể loại hoặc trạng thái. Mỗi dòng trong bảng hiển thị ISBN, tên sách, tác giả, số bản, số bản còn lại và trạng thái. Thủ thư có thể thực hiện các thao tác Thêm mới, Chỉnh sửa hoặc Cập nhật trạng thái trực tiếp từ bảng này.
 
-![Quản lý sách](QLSach.png)
+![Quản lý sách](images/QLSach.png)
 
 *Hình 2.28. Giao diện Quản lý sách*
 
@@ -1601,7 +1600,7 @@ Màn hình Quản lý sách cho phép Thủ thư xem toàn bộ danh mục sách
 
 Màn hình Mượn sách hỗ trợ quy trình quét mã vạch. Thủ thư quét barcode của sách, hệ thống hiển thị thông tin sách tương ứng. Tiếp theo, Thủ thư nhập Gmail của Sinh viên để hệ thống kiểm tra tính hợp lệ và ghi nhận giao dịch mượn, thiết lập ngày mượn và hạn trả tự động.
 
-![Mượn sách](MuonSach.png)
+![Mượn sách](images/MuonSach.png)
 
 *Hình 2.29. Giao diện Mượn sách – Quét barcode*
 
@@ -1611,7 +1610,7 @@ Màn hình Mượn sách hỗ trợ quy trình quét mã vạch. Thủ thư qué
 
 Màn hình Danh sách mượn hiển thị tất cả các giao dịch mượn đang hoạt động. Mỗi dòng gồm tên Sinh viên, tên sách, ngày mượn, hạn trả và trạng thái (Đang mượn / Quá hạn). Thủ thư có thể thực hiện thao tác Nhận trả sách trực tiếp từ màn hình này.
 
-![Danh sách mượn](DanhSachMuon.png)
+![Danh sách mượn](images/DanhSachMuon.png)
 
 *Hình 2.30. Giao diện Danh sách mượn*
 
@@ -1621,7 +1620,7 @@ Màn hình Danh sách mượn hiển thị tất cả các giao dịch mượn �
 
 Màn hình Quản lý tiền phạt tổng hợp các giao dịch có phát sinh tiền phạt. Hệ thống hiển thị rõ số ngày quá hạn, mức phí áp dụng và tổng tiền phạt cho từng trường hợp. Thủ thư có thể xác nhận thanh toán và lưu kết quả vào hệ thống.
 
-![Quản lý tiền phạt](QLTienPhat.png)
+![Quản lý tiền phạt](images/QLTienPhat.png)
 
 *Hình 2.31. Giao diện Quản lý tiền phạt*
 
@@ -1631,7 +1630,7 @@ Màn hình Quản lý tiền phạt tổng hợp các giao dịch có phát sinh
 
 Màn hình OCR cho phép Thủ thư tải lên file ảnh hoặc PDF của tài liệu cần số hóa. Sau khi xử lý, hệ thống hiển thị văn bản trích xuất để Thủ thư kiểm tra, chỉnh sửa rồi xác nhận lưu vào cơ sở dữ liệu.
 
-![OCR](OCR.png)
+![OCR](images/OCR.png)
 
 *Hình 2.32. Giao diện OCR – Số hóa tài liệu*
 
@@ -1641,7 +1640,7 @@ Màn hình OCR cho phép Thủ thư tải lên file ảnh hoặc PDF của tài 
 
 Màn hình Sách số hiển thị nội dung văn bản đã được số hóa thông qua OCR. Sinh viên có thể đọc nội dung trực tuyến và tìm kiếm từ khóa bên trong sách mà không cần tiếp xúc với hiện vật gốc.
 
-![Sách số](SachSo.png)
+![Sách số](images/SachSo.png)
 
 *Hình 2.33. Giao diện Sách số – Xem nội dung*
 
