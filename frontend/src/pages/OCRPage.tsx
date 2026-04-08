@@ -8,6 +8,11 @@ import {
   X,
   FileText,
   Plus,
+  Copy,
+  Check,
+  Pencil,
+  Save,
+  XCircle,
 } from "lucide-react";
 import { useOcr } from "@/hooks/useOcr";
 import { ocrService } from "@/services/ocrService";
@@ -48,54 +53,245 @@ function AccuracyBadge({ pct }: { pct: number }) {
   );
 }
 
-// ─── Modal xem nội dung ───────────────────────────────────────────────────────
+// ─── CopyButton ───────────────────────────────────────────────────────────────
+function CopyButton({ text, label = "Sao chép" }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback cho trình duyệt không hỗ trợ clipboard API
+      const el = document.createElement("textarea");
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      title={label}
+      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all
+        ${copied
+          ? "bg-green-100 text-green-600 border border-green-200"
+          : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+        }`}
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+      {copied ? "Đã sao chép!" : label}
+    </button>
+  );
+}
+
+// ─── Modal xem / chỉnh sửa nội dung ──────────────────────────────────────────
 function ModalView({
   book,
   onClose,
+  onSave,
 }: {
   book: DigitalBookResponse | null;
   onClose: () => void;
+  onSave: (id: number, payload: { title: string; author: string; pages: { pageNumber: number; extractedText: string }[] }) => Promise<DigitalBookResponse | null>;
 }) {
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // State chỉnh sửa: lưu text từng trang theo pageNumber
+  const [editTitle, setEditTitle] = useState("");
+  const [editAuthor, setEditAuthor] = useState("");
+  const [editTexts, setEditTexts] = useState<Record<number, string>>({});
+
+  // Khởi tạo state khi mở edit
+  const enterEditMode = () => {
+    if (!book) return;
+    setEditTitle(book.title || "");
+    setEditAuthor(book.author || "");
+    const map: Record<number, string> = {};
+    (book.pages || []).forEach((p) => {
+      map[p.pageNumber] = p.extractedText || "";
+    });
+    setEditTexts(map);
+    setEditMode(true);
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+  };
+
+  const handleSave = async () => {
+    if (!book) return;
+    setSaving(true);
+    const payload = {
+      title: editTitle.trim() || book.title,
+      author: editAuthor.trim(),
+      pages: Object.entries(editTexts).map(([pageNum, text]) => ({
+        pageNumber: Number(pageNum),
+        extractedText: text,
+      })),
+    };
+    const updated = await onSave(book.id, payload);
+    setSaving(false);
+    if (updated) {
+      setEditMode(false);
+    }
+  };
+
+  // Ghép toàn bộ text để copy all
+  const allText = book
+    ? (book.pages || [])
+        .map((p) => `--- Trang ${p.pageNumber} ---\n${p.extractedText || ""}`)
+        .join("\n\n")
+    : "";
+
   if (!book) return null;
+
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+      onClick={!editMode ? onClose : undefined}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between p-6 border-b border-gray-100">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">{book.title}</h2>
-            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-              <span>{book.author || "Không rõ tác giả"}</span>
-              <span>·</span>
-              <span>OCR {fmtDate(book.ocrDate)}</span>
-              <span>·</span>
-              <AccuracyBadge pct={getAvgAccuracy(book.pages)} />
-            </div>
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between p-6 border-b border-gray-100 gap-4">
+          <div className="flex-1 min-w-0">
+            {editMode ? (
+              <div className="space-y-2">
+                <input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full text-lg font-bold text-gray-900 border border-blue-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Tiêu đề sách"
+                />
+                <input
+                  value={editAuthor}
+                  onChange={(e) => setEditAuthor(e.target.value)}
+                  className="w-full text-sm text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Tác giả"
+                />
+              </div>
+            ) : (
+              <>
+                <h2 className="text-lg font-bold text-gray-900 truncate">
+                  {book.title}
+                </h2>
+                <div className="flex items-center gap-2 text-sm text-gray-500 mt-1 flex-wrap">
+                  <span>{book.author || "Không rõ tác giả"}</span>
+                  <span>·</span>
+                  <span>OCR {fmtDate(book.ocrDate)}</span>
+                  <span>·</span>
+                  <AccuracyBadge pct={getAvgAccuracy(book.pages)} />
+                </div>
+              </>
+            )}
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors ml-4"
-          >
-            <X size={22} />
-          </button>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {!editMode ? (
+              <>
+                {/* Copy tất cả */}
+                <CopyButton text={allText} label="Copy tất cả" />
+
+                {/* Nút chỉnh sửa */}
+                <button
+                  onClick={enterEditMode}
+                  title="Chỉnh sửa nội dung"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-all"
+                >
+                  <Pencil size={12} />
+                  Chỉnh sửa
+                </button>
+
+                {/* Đóng */}
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X size={22} />
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Lưu */}
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-60 transition-all"
+                >
+                  {saving ? (
+                    <RefreshCw size={12} className="animate-spin" />
+                  ) : (
+                    <Save size={12} />
+                  )}
+                  {saving ? "Đang lưu…" : "Lưu"}
+                </button>
+
+                {/* Huỷ */}
+                <button
+                  onClick={cancelEdit}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all"
+                >
+                  <XCircle size={12} />
+                  Huỷ
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
+        {/* ── Body ── */}
         <div className="overflow-y-auto p-6">
           <div className="space-y-6">
             {book.pages && book.pages.length > 0 ? (
               book.pages.map((p) => (
                 <div key={p.pageNumber}>
-                  <p className="text-xs font-bold text-blue-600 uppercase mb-2 tracking-wider">
-                    Trang {p.pageNumber} (Độ chính xác: {p.accuracyPercent}%)
-                  </p>
-                  <pre className="bg-gray-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap break-words text-gray-800 font-mono border border-gray-100">
-                    {p.extractedText || "Không có nội dung."}
-                  </pre>
+                  {/* Page header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+                      Trang {p.pageNumber}{" "}
+                      <span className="text-gray-400 font-normal normal-case">
+                        (Độ chính xác: {p.accuracyPercent}%)
+                      </span>
+                    </p>
+
+                    {/* Copy trang này — chỉ hiện khi không edit */}
+                    {!editMode && (
+                      <CopyButton
+                        text={p.extractedText || ""}
+                        label="Sao chép trang"
+                      />
+                    )}
+                  </div>
+
+                  {/* Content: view hoặc edit */}
+                  {editMode ? (
+                    <textarea
+                      value={editTexts[p.pageNumber] ?? ""}
+                      onChange={(e) =>
+                        setEditTexts((prev) => ({
+                          ...prev,
+                          [p.pageNumber]: e.target.value,
+                        }))
+                      }
+                      rows={8}
+                      className="w-full bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm leading-relaxed font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-y"
+                    />
+                  ) : (
+                    <pre className="bg-gray-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap break-words text-gray-800 font-mono border border-gray-100">
+                      {p.extractedText || "Không có nội dung."}
+                    </pre>
+                  )}
                 </div>
               ))
             ) : (
@@ -112,9 +308,10 @@ function ModalView({
 
 // ─── OcrPage ──────────────────────────────────────────────────────────────────
 export default function OcrPage() {
-  const { books, loading, uploading, error, upload, remove, search } = useOcr();
+  const { books, loading, uploading, error, upload, update, remove, search } =
+    useOcr();
 
-  // Upload form state - Chuyển sang mảng để nhận nhiều ảnh
+  // Upload form state
   const [dragOver, setDragOver] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -127,11 +324,11 @@ export default function OcrPage() {
   const [keyword, setKeyword] = useState("");
   const [viewBook, setViewBook] = useState<DigitalBookResponse | null>(null);
 
-  // ── file pick (Hỗ trợ nhiều file) ──
+  // ── file pick ──
   const pickFiles = useCallback(
     (newFiles: FileList | File[]) => {
       const fileArray = Array.from(newFiles).filter((f) =>
-        f.type.startsWith("image/"),
+        f.type.startsWith("image/")
       );
       if (fileArray.length === 0) return;
 
@@ -148,11 +345,11 @@ export default function OcrPage() {
 
       if (!title && fileArray.length > 0) {
         setTitle(
-          fileArray[0].name.replace(/\.[^.]+$/, "").replace(/[_-]/g, " "),
+          fileArray[0].name.replace(/\.[^.]+$/, "").replace(/[_-]/g, " ")
         );
       }
     },
-    [title],
+    [title]
   );
 
   const onDrop = useCallback(
@@ -161,7 +358,7 @@ export default function OcrPage() {
       setDragOver(false);
       if (e.dataTransfer.files) pickFiles(e.dataTransfer.files);
     },
-    [pickFiles],
+    [pickFiles]
   );
 
   const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -180,28 +377,16 @@ export default function OcrPage() {
     if (!title.trim()) return setFormError("Vui lòng nhập tiêu đề sách.");
     setFormError("");
 
-    console.log(
-      ">>> Bắt đầu gửi request OCR cho:",
-      title,
-      "Số lượng ảnh:",
-      files.length,
-    );
-
     try {
-      // Truyền toàn bộ mảng files vào hook
       const ok = await upload(files, title.trim(), author.trim());
-
       if (ok) {
-        console.log(">>> Upload thành công!");
         setFiles([]);
         setPreviews([]);
         setTitle("");
         setAuthor("");
-      } else {
-        console.error(">>> Hook upload trả về false");
       }
     } catch (err) {
-      console.error(">>> Lỗi thực thi handleUpload:", err);
+      console.error("Lỗi handleUpload:", err);
     }
   };
 
@@ -213,6 +398,23 @@ export default function OcrPage() {
     } catch {
       alert("Không thể tải nội dung.");
     }
+  };
+
+  // ── save edit từ modal ──
+  const handleSave = async (
+    id: number,
+    payload: {
+      title: string;
+      author: string;
+      pages: { pageNumber: number; extractedText: string }[];
+    }
+  ) => {
+    const updated = await update(id, payload);
+    if (updated) {
+      // Cập nhật luôn viewBook để modal hiển thị dữ liệu mới
+      setViewBook(updated);
+    }
+    return updated;
   };
 
   // ── delete ──
@@ -239,7 +441,8 @@ export default function OcrPage() {
         <h1 className="text-2xl font-bold text-gray-900">OCR Upload</h1>
       </div>
       <p className="text-gray-500 mb-8">
-        Tải lên hình ảnh sách cũ để trích xuất văn bản có thể tìm kiếm.
+        Tải lên hình ảnh sách cũ để trích xuất văn bản có thể tìm kiếm, sao
+        chép và chỉnh sửa.
       </p>
 
       {/* ── Upload card ── */}
@@ -264,7 +467,7 @@ export default function OcrPage() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            multiple // Quan trọng: Cho phép chọn nhiều file
+            multiple
             className="hidden"
             onChange={onFileChange}
           />
@@ -295,7 +498,7 @@ export default function OcrPage() {
                   </div>
                 </div>
               ))}
-              {/* Nút thêm ảnh nhanh */}
+              {/* Nút thêm ảnh */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -455,12 +658,14 @@ export default function OcrPage() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleView(b.id)}
+                          title="Xem / Chỉnh sửa"
                           className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"
                         >
                           <Eye size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(b.id)}
+                          title="Xoá"
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                         >
                           <Trash2 size={16} />
@@ -475,7 +680,11 @@ export default function OcrPage() {
         </div>
       </div>
 
-      <ModalView book={viewBook} onClose={() => setViewBook(null)} />
+      <ModalView
+        book={viewBook}
+        onClose={() => setViewBook(null)}
+        onSave={handleSave}
+      />
     </div>
   );
 }

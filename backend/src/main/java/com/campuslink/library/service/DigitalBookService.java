@@ -1,6 +1,7 @@
 package com.campuslink.library.service;
 
 import com.campuslink.library.dto.request.DigitalBookRequest;
+import com.campuslink.library.dto.request.UpdateDigitalBookRequest;
 import com.campuslink.library.dto.response.DigitalBookResponse;
 import com.campuslink.library.entity.DigitalBook;
 import com.campuslink.library.entity.DigitalBookPage;
@@ -83,6 +84,31 @@ public class DigitalBookService {
     public List<DigitalBookResponse> search(String keyword) {
         return repository.searchByKeyword(keyword)
                 .stream().map(mapper::toResponse).collect(Collectors.toList());
+    }
+
+
+    @Transactional
+    public DigitalBookResponse update(Long id, UpdateDigitalBookRequest request) {
+        DigitalBook book = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy id=" + id));
+
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            book.setTitle(request.getTitle());
+        }
+        if (request.getAuthor() != null) {
+            book.setAuthor(request.getAuthor());
+        }
+
+        if (request.getPages() != null) {
+            for (UpdateDigitalBookRequest.PageUpdate pageUpdate : request.getPages()) {
+                book.getPages().stream()
+                        .filter(p -> p.getPageNumber().equals(pageUpdate.getPageNumber()))
+                        .findFirst()
+                        .ifPresent(p -> p.setExtractedText(pageUpdate.getExtractedText()));
+            }
+        }
+
+        return mapper.toResponse(repository.save(book));
     }
 
     @Transactional

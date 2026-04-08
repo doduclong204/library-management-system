@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { ocrService } from "../services/ocrService";
+import { ocrService, UpdateDigitalBookPayload } from "../services/ocrService";
 import { DigitalBookResponse } from "../types/digitalBook";
 
 export function useOcr() {
-  const [books, setBooks]           = useState<DigitalBookResponse[]>([]);
-  const [loading, setLoading]       = useState(false);
-  const [uploading, setUploading]   = useState(false);
-  const [error, setError]           = useState<string | null>(null);
+  const [books, setBooks] = useState<DigitalBookResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // ── Load danh sách ──────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -22,7 +22,9 @@ export function useOcr() {
     }
   }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
   // ── Tìm kiếm ───────────────────────────────────
   const search = useCallback(async (keyword: string) => {
@@ -41,13 +43,11 @@ export function useOcr() {
   }, []);
 
   // ── Upload + OCR ────────────────────────────────
-  // SỬA TẠI ĐÂY: Đổi 'file: File' thành 'files: File[]' để khớp với Service
   const upload = useCallback(
     async (files: File[], title: string, author: string): Promise<boolean> => {
       setUploading(true);
       setError(null);
       try {
-        // Truyền mảng files vào service
         const newBook = await ocrService.upload(files, title, author);
         setBooks((prev) => [newBook, ...prev]);
         return true;
@@ -57,6 +57,24 @@ export function useOcr() {
         return false;
       } finally {
         setUploading(false);
+      }
+    },
+    []
+  );
+
+  // ── Cập nhật nội dung ───────────────────────────
+  const update = useCallback(
+    async (
+      id: number,
+      payload: UpdateDigitalBookPayload
+    ): Promise<DigitalBookResponse | null> => {
+      try {
+        const updated = await ocrService.update(id, payload);
+        setBooks((prev) => prev.map((b) => (b.id === id ? updated : b)));
+        return updated;
+      } catch {
+        setError("Lưu thất bại. Vui lòng thử lại.");
+        return null;
       }
     },
     []
@@ -72,5 +90,15 @@ export function useOcr() {
     }
   }, []);
 
-  return { books, loading, uploading, error, upload, remove, search, refetch: fetchAll };
+  return {
+    books,
+    loading,
+    uploading,
+    error,
+    upload,
+    update,
+    remove,
+    search,
+    refetch: fetchAll,
+  };
 }

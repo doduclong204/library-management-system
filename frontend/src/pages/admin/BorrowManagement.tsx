@@ -124,8 +124,8 @@ const BorrowManagement = () => {
           b.title.toLowerCase().includes(bookQuery.toLowerCase()) ||
           b.isbn.toLowerCase().includes(bookQuery.toLowerCase())
         )
-      ).slice(0, 6)
-    : allBooks.filter(b => !selectedBooks.find(s => s.id === b.id)).slice(0, 6);
+      ).slice(0, 10)
+    : allBooks.filter(b => !selectedBooks.find(s => s.id === b.id)).slice(0, 10);
 
   useEffect(() => {
     if (emailQuery.length < 3 || selectedPatron) {

@@ -1,6 +1,7 @@
 package com.campuslink.library.controller;
 
 import com.campuslink.library.dto.request.DigitalBookRequest;
+import com.campuslink.library.dto.request.UpdateDigitalBookRequest;
 import com.campuslink.library.dto.response.DigitalBookResponse;
 import com.campuslink.library.service.DigitalBookService;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,15 @@ public class OcrController {
     @PreAuthorize("hasRole('LIBRARIAN') or hasRole('ADMIN')")
     public ResponseEntity<List<DigitalBookResponse>> search(@RequestParam String keyword) {
         return ResponseEntity.ok(service.search(keyword));
+    }
+
+    @PutMapping("/books/{id}")
+    @PreAuthorize("hasRole('LIBRARIAN') or hasRole('ADMIN')")
+    public ResponseEntity<DigitalBookResponse> update(
+            @PathVariable Long id,
+            @RequestBody UpdateDigitalBookRequest request
+    ) {
+        return ResponseEntity.ok(service.update(id, request));
     }
 
     @DeleteMapping("/books/{id}")

@@ -3,6 +3,12 @@ import { DigitalBookResponse } from "../types/digitalBook";
 
 const BASE = "/ocr";
 
+export interface UpdateDigitalBookPayload {
+  title?: string;
+  author?: string;
+  pages?: { pageNumber: number; extractedText: string }[];
+}
+
 export const ocrService = {
   upload: async (
     files: File[],
@@ -10,7 +16,7 @@ export const ocrService = {
     author: string
   ): Promise<DigitalBookResponse> => {
     const form = new FormData();
-    files.forEach(file => {
+    files.forEach((file) => {
       form.append("files", file);
     });
     form.append("title", title);
@@ -30,7 +36,9 @@ export const ocrService = {
   },
 
   getById: async (id: number): Promise<DigitalBookResponse> => {
-    const res = await axiosInstance.get<DigitalBookResponse>(`${BASE}/books/${id}`);
+    const res = await axiosInstance.get<DigitalBookResponse>(
+      `${BASE}/books/${id}`
+    );
     return res.data;
   },
 
@@ -38,6 +46,17 @@ export const ocrService = {
     const res = await axiosInstance.get<DigitalBookResponse[]>(
       `${BASE}/books/search`,
       { params: { keyword } }
+    );
+    return res.data;
+  },
+
+  update: async (
+    id: number,
+    payload: UpdateDigitalBookPayload
+  ): Promise<DigitalBookResponse> => {
+    const res = await axiosInstance.put<DigitalBookResponse>(
+      `${BASE}/books/${id}`,
+      payload
     );
     return res.data;
   },
