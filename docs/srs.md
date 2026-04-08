@@ -1539,3 +1539,419 @@ classDiagram
 ```
 
 *Hình 2.23. Biểu đồ lớp phân tích – OCR – Dữ liệu số*
+
+
+## 2.4. Thiết kế giao diện
+
+Phần này trình bày thiết kế giao diện người dùng của Hệ thống Quản lý Thư viện. Giao diện được xây dựng theo hướng trực quan, thân thiện và phù hợp với từng nhóm người dùng: Sinh viên (không cần đăng nhập) và Thủ thư (cần xác thực).
+
+---
+
+### 2.4.1. Màn hình Trang chủ (Sinh viên)
+
+Trang chủ là điểm tiếp cận đầu tiên của Sinh viên. Giao diện hiển thị thanh tìm kiếm nổi bật ở trung tâm, kèm theo các nút lọc theo thể loại và danh sách sách nổi bật. Sinh viên có thể tìm kiếm sách ngay mà không cần đăng nhập.
+
+![Trang chủ](Trangchu.png)
+
+*Hình 2.24. Giao diện Trang chủ*
+
+---
+
+### 2.4.2. Màn hình Tìm kiếm sách
+
+Màn hình Tìm kiếm cho phép Sinh viên nhập từ khóa theo tên sách, tác giả hoặc ISBN. Kết quả hiển thị dưới dạng danh sách thẻ sách, mỗi thẻ cho thấy ảnh bìa, tên sách, tác giả, thể loại và trạng thái còn/hết. Sinh viên có thể nhấn vào thẻ để xem chi tiết tình trạng sách.
+
+![Tìm kiếm sách](TIMKIEM.png)
+
+*Hình 2.25. Giao diện Tìm kiếm sách*
+
+---
+
+### 2.4.3. Màn hình Dashboard – Thủ thư
+
+Sau khi đăng nhập thành công, Thủ thư được chuyển đến Dashboard – trung tâm điều hành của hệ thống. Giao diện hiển thị các chỉ số tổng quan: tổng số sách, số sách đang mượn, số giao dịch quá hạn và doanh thu phạt trong tháng. Phía dưới là danh sách các giao dịch mượn gần đây và cảnh báo sách sắp hết hạn.
+
+![Dashboard](Dashboard.png)
+
+*Hình 2.26. Giao diện Dashboard – Thủ thư*
+
+---
+
+### 2.4.4. Màn hình Dashboard (chi tiết thống kê)
+
+Phần mở rộng của Dashboard trình bày biểu đồ thống kê lượt mượn theo tuần/tháng, giúp Thủ thư nắm bắt xu hướng sử dụng thư viện và các đầu sách phổ biến nhất.
+
+![Dashboard chi tiết](dashboard2.png)
+
+*Hình 2.27. Giao diện Dashboard – Thống kê chi tiết*
+
+---
+
+### 2.4.5. Màn hình Quản lý sách
+
+Màn hình Quản lý sách cho phép Thủ thư xem toàn bộ danh mục sách, tìm kiếm và lọc theo thể loại hoặc trạng thái. Mỗi dòng trong bảng hiển thị ISBN, tên sách, tác giả, số bản, số bản còn lại và trạng thái. Thủ thư có thể thực hiện các thao tác Thêm mới, Chỉnh sửa hoặc Cập nhật trạng thái trực tiếp từ bảng này.
+
+![Quản lý sách](QLSach.png)
+
+*Hình 2.28. Giao diện Quản lý sách*
+
+---
+
+### 2.4.6. Màn hình Mượn sách (Quét barcode)
+
+Màn hình Mượn sách hỗ trợ quy trình quét mã vạch. Thủ thư quét barcode của sách, hệ thống hiển thị thông tin sách tương ứng. Tiếp theo, Thủ thư nhập Gmail của Sinh viên để hệ thống kiểm tra tính hợp lệ và ghi nhận giao dịch mượn, thiết lập ngày mượn và hạn trả tự động.
+
+![Mượn sách](MuonSach.png)
+
+*Hình 2.29. Giao diện Mượn sách – Quét barcode*
+
+---
+
+### 2.4.7. Màn hình Danh sách mượn
+
+Màn hình Danh sách mượn hiển thị tất cả các giao dịch mượn đang hoạt động. Mỗi dòng gồm tên Sinh viên, tên sách, ngày mượn, hạn trả và trạng thái (Đang mượn / Quá hạn). Thủ thư có thể thực hiện thao tác Nhận trả sách trực tiếp từ màn hình này.
+
+![Danh sách mượn](DanhSachMuon.png)
+
+*Hình 2.30. Giao diện Danh sách mượn*
+
+---
+
+### 2.4.8. Màn hình Quản lý tiền phạt
+
+Màn hình Quản lý tiền phạt tổng hợp các giao dịch có phát sinh tiền phạt. Hệ thống hiển thị rõ số ngày quá hạn, mức phí áp dụng và tổng tiền phạt cho từng trường hợp. Thủ thư có thể xác nhận thanh toán và lưu kết quả vào hệ thống.
+
+![Quản lý tiền phạt](QLTienPhat.png)
+
+*Hình 2.31. Giao diện Quản lý tiền phạt*
+
+---
+
+### 2.4.9. Màn hình OCR – Số hóa tài liệu
+
+Màn hình OCR cho phép Thủ thư tải lên file ảnh hoặc PDF của tài liệu cần số hóa. Sau khi xử lý, hệ thống hiển thị văn bản trích xuất để Thủ thư kiểm tra, chỉnh sửa rồi xác nhận lưu vào cơ sở dữ liệu.
+
+![OCR](OCR.png)
+
+*Hình 2.32. Giao diện OCR – Số hóa tài liệu*
+
+---
+
+### 2.4.10. Màn hình Sách số (Full-text)
+
+Màn hình Sách số hiển thị nội dung văn bản đã được số hóa thông qua OCR. Sinh viên có thể đọc nội dung trực tuyến và tìm kiếm từ khóa bên trong sách mà không cần tiếp xúc với hiện vật gốc.
+
+![Sách số](SachSo.png)
+
+*Hình 2.33. Giao diện Sách số – Xem nội dung*
+
+---
+
+# CHƯƠNG 3: THIẾT KẾ HỆ THỐNG
+
+## 3.1. Kiến trúc hệ thống
+
+Hệ thống Quản lý Thư viện được xây dựng theo mô hình kiến trúc ba tầng (Three-tier Architecture), gồm tầng Trình diễn (Presentation Layer), tầng Xử lý nghiệp vụ (Business Logic Layer) và tầng Dữ liệu (Data Layer). Mô hình này giúp tách biệt rõ ràng giữa giao diện, logic xử lý và lưu trữ dữ liệu, tạo điều kiện thuận lợi cho việc bảo trì và mở rộng hệ thống trong tương lai.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  PRESENTATION LAYER                      │
+│         Trình duyệt Web (HTML/CSS/JavaScript)            │
+│    Sinh viên: Tìm kiếm, Xem tình trạng, Xem mượn        │
+│    Thủ thư: Dashboard, Quản lý sách, Mượn/Trả, OCR      │
+└─────────────────────┬───────────────────────────────────┘
+                      │ HTTP/HTTPS
+┌─────────────────────▼───────────────────────────────────┐
+│               BUSINESS LOGIC LAYER                       │
+│                  Web Server (Django)                      │
+│  Controllers: Đăng nhập, Sách, Mượn, Trả, Phạt, OCR    │
+│  Services: Email Scheduler, Fine Calculator, OCR Engine  │
+└─────────────────────┬───────────────────────────────────┘
+                      │ ORM / SQL
+┌─────────────────────▼───────────────────────────────────┐
+│                    DATA LAYER                            │
+│               MySQL / PostgreSQL Database                │
+│  Tables: librarians, books, book_copies, book_authors,  │
+│          authors, patrons, borrow_records               │
+└─────────────────────────────────────────────────────────┘
+```
+
+*Hình 3.1. Kiến trúc ba tầng của hệ thống*
+
+### 3.1.1. Tầng Trình diễn (Presentation Layer)
+
+Tầng trình diễn là giao diện tương tác trực tiếp giữa người dùng và hệ thống, được xây dựng bằng HTML, CSS và JavaScript theo hướng responsive. Tầng này bao gồm hai nhóm giao diện chính: giao diện dành cho Sinh viên (không cần đăng nhập) và giao diện dành cho Thủ thư (yêu cầu xác thực). Mọi yêu cầu từ tầng này đều được gửi lên tầng xử lý nghiệp vụ thông qua giao thức HTTP/HTTPS.
+
+### 3.1.2. Tầng Xử lý nghiệp vụ (Business Logic Layer)
+
+Tầng nghiệp vụ chịu trách nhiệm xử lý toàn bộ logic của hệ thống, được xây dựng trên nền tảng Python/Django. Tầng này bao gồm các Controller xử lý từng nghiệp vụ cụ thể (đăng nhập, quản lý sách, mượn/trả, tính phạt, OCR) và các Service chạy nền như bộ lập lịch gửi email nhắc hạn tự động và engine xử lý OCR.
+
+### 3.1.3. Tầng Dữ liệu (Data Layer)
+
+Tầng dữ liệu sử dụng hệ quản trị cơ sở dữ liệu quan hệ MySQL hoặc PostgreSQL để lưu trữ toàn bộ dữ liệu của hệ thống. Tầng nghiệp vụ tương tác với tầng dữ liệu thông qua ORM (Object-Relational Mapping) của Django, giúp đảm bảo tính nhất quán và an toàn trong thao tác dữ liệu.
+
+---
+
+## 3.2. Thiết kế cơ sở dữ liệu
+
+### 3.2.1. Mô hình quan hệ thực thể (ERD)
+
+Cơ sở dữ liệu của hệ thống gồm 7 bảng chính được thiết kế theo mô hình quan hệ như sau:
+
+```mermaid
+erDiagram
+    librarians {
+        INT id PK
+        VARCHAR username
+        VARCHAR email
+        VARCHAR full_name
+        VARCHAR password_hash
+        TIMESTAMP created_at
+    }
+
+    books {
+        INT id PK
+        VARCHAR title
+        VARCHAR isbn
+        VARCHAR genre
+        INT publication_year
+        INT total_copies
+        INT available_copies
+        TEXT full_text
+        TIMESTAMP created_at
+    }
+
+    authors {
+        INT id PK
+        VARCHAR name
+        TEXT bio
+    }
+
+    book_authors {
+        INT book_id FK
+        INT author_id FK
+    }
+
+    book_copies {
+        INT id PK
+        VARCHAR barcode
+        VARCHAR status
+        INT book_id FK
+        TIMESTAMP updated_at
+    }
+
+    patrons {
+        INT id PK
+        VARCHAR full_name
+        VARCHAR email
+        VARCHAR student_id
+        TIMESTAMP created_at
+    }
+
+    borrow_records {
+        INT id PK
+        DATE borrow_date
+        DATE due_date
+        DATE return_date
+        DECIMAL fine_amount
+        TINYINT reminder_sent
+        VARCHAR status
+        INT book_copy_id FK
+        INT patron_id FK
+        INT librarian_id FK
+        TIMESTAMP created_at
+    }
+
+    books ||--o{ book_authors : "có"
+    authors ||--o{ book_authors : "viết"
+    books ||--o{ book_copies : "có bản"
+    book_copies ||--o{ borrow_records : "được mượn"
+    patrons ||--o{ borrow_records : "thực hiện"
+    librarians ||--o{ borrow_records : "xử lý"
+```
+
+*Hình 3.2. Mô hình quan hệ thực thể (ERD)*
+
+---
+
+### 3.2.2. Mô tả chi tiết các bảng
+
+**Bảng `librarians` – Thủ thư**
+
+Lưu thông tin tài khoản của thủ thư. Trường `password_hash` lưu mật khẩu đã được mã hóa bằng thuật toán bcrypt.
+
+| Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+|-----|-------------|-----------|-------|
+| id | INT | PK, AUTO_INCREMENT | Mã thủ thư |
+| username | VARCHAR(50) | UNIQUE, NOT NULL | Tên đăng nhập |
+| email | VARCHAR(100) | UNIQUE, NOT NULL | Email thủ thư |
+| full_name | VARCHAR(100) | NOT NULL | Họ tên đầy đủ |
+| password_hash | VARCHAR(255) | NOT NULL | Mật khẩu đã mã hóa |
+| created_at | TIMESTAMP | DEFAULT NOW() | Thời điểm tạo |
+
+**Bảng `books` – Sách**
+
+Lưu thông tin đầu sách. Trường `full_text` lưu nội dung văn bản sau khi xử lý OCR, phục vụ tìm kiếm toàn văn.
+
+| Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+|-----|-------------|-----------|-------|
+| id | INT | PK, AUTO_INCREMENT | Mã sách |
+| title | VARCHAR(255) | NOT NULL | Tên sách |
+| isbn | VARCHAR(20) | UNIQUE | Mã ISBN |
+| genre | VARCHAR(100) | | Thể loại |
+| publication_year | INT | | Năm xuất bản |
+| total_copies | INT | DEFAULT 0 | Tổng số bản |
+| available_copies | INT | DEFAULT 0 | Số bản còn lại |
+| full_text | TEXT | | Nội dung số hóa (OCR) |
+| created_at | TIMESTAMP | DEFAULT NOW() | Thời điểm nhập |
+
+**Bảng `authors` – Tác giả**
+
+| Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+|-----|-------------|-----------|-------|
+| id | INT | PK, AUTO_INCREMENT | Mã tác giả |
+| name | VARCHAR(150) | NOT NULL | Tên tác giả |
+| bio | TEXT | | Tiểu sử |
+
+**Bảng `book_authors` – Sách – Tác giả (quan hệ N-N)**
+
+| Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+|-----|-------------|-----------|-------|
+| book_id | INT | FK → books.id | Mã sách |
+| author_id | INT | FK → authors.id | Mã tác giả |
+
+Khóa chính là cặp `(book_id, author_id)`.
+
+**Bảng `book_copies` – Bản sách**
+
+Mỗi bản sách vật lý được quản lý riêng biệt qua barcode. Trường `status` nhận một trong các giá trị: `available`, `borrowed`, `damaged`, `lost`, `disposed`.
+
+| Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+|-----|-------------|-----------|-------|
+| id | INT | PK, AUTO_INCREMENT | Mã bản sách |
+| barcode | VARCHAR(50) | UNIQUE, NOT NULL | Mã vạch vật lý |
+| status | VARCHAR(20) | NOT NULL | Trạng thái bản sách |
+| book_id | INT | FK → books.id | Thuộc đầu sách nào |
+| updated_at | TIMESTAMP | DEFAULT NOW() | Cập nhật lần cuối |
+
+**Bảng `patrons` – Độc giả**
+
+| Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+|-----|-------------|-----------|-------|
+| id | INT | PK, AUTO_INCREMENT | Mã độc giả |
+| full_name | VARCHAR(100) | NOT NULL | Họ tên |
+| email | VARCHAR(100) | UNIQUE, NOT NULL | Gmail dùng nhận thông báo |
+| student_id | VARCHAR(20) | UNIQUE | Mã số sinh viên |
+| created_at | TIMESTAMP | DEFAULT NOW() | Ngày đăng ký |
+
+**Bảng `borrow_records` – Giao dịch mượn/trả**
+
+Bảng trung tâm ghi nhận toàn bộ lịch sử mượn/trả. Trường `status` nhận một trong các giá trị: `borrowing`, `returned`, `overdue`. Trường `reminder_sent` đánh dấu đã gửi email nhắc hạn hay chưa (0 = chưa, 1 = đã gửi).
+
+| Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+|-----|-------------|-----------|-------|
+| id | INT | PK, AUTO_INCREMENT | Mã giao dịch |
+| borrow_date | DATE | NOT NULL | Ngày mượn |
+| due_date | DATE | NOT NULL | Hạn trả |
+| return_date | DATE | NULL | Ngày trả thực tế |
+| fine_amount | DECIMAL(10,2) | DEFAULT 0 | Tiền phạt |
+| reminder_sent | TINYINT | DEFAULT 0 | Đã gửi nhắc hạn chưa |
+| status | VARCHAR(20) | NOT NULL | Trạng thái giao dịch |
+| book_copy_id | INT | FK → book_copies.id | Bản sách được mượn |
+| patron_id | INT | FK → patrons.id | Người mượn |
+| librarian_id | INT | FK → librarians.id | Thủ thư xử lý |
+| created_at | TIMESTAMP | DEFAULT NOW() | Thời điểm tạo |
+
+---
+
+## 3.3. Thiết kế mô hình triển khai
+
+Hệ thống được triển khai trong môi trường web, kết hợp giữa máy chủ ứng dụng và máy chủ cơ sở dữ liệu. Mô hình triển khai như sau:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      CLIENT                              │
+│         Trình duyệt (Chrome, Firefox, Edge...)          │
+│         Thiết bị: PC, Laptop, Tablet                    │
+└─────────────────────┬───────────────────────────────────┘
+                      │ HTTPS (Port 443)
+┌─────────────────────▼───────────────────────────────────┐
+│                   WEB SERVER                             │
+│              Nginx (Reverse Proxy)                       │
+│              Gunicorn + Django Application               │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │  Services chạy nền (Celery / APScheduler)        │   │
+│  │  - Email Scheduler (00:00 hàng ngày)             │   │
+│  │  - Fine Calculator (khi nhận trả)                │   │
+│  │  - OCR Engine (Tesseract / Google Vision API)    │   │
+│  └──────────────────────────────────────────────────┘   │
+└─────────────────────┬───────────────────────────────────┘
+                      │ TCP (Port 3306/5432)
+┌─────────────────────▼───────────────────────────────────┐
+│                 DATABASE SERVER                          │
+│            MySQL 8.0 / PostgreSQL 15                     │
+│            Backup tự động hàng ngày                      │
+└─────────────────────────────────────────────────────────┘
+                      │ SMTP (Port 587)
+┌─────────────────────▼───────────────────────────────────┐
+│                  EMAIL SERVICE                           │
+│             Gmail SMTP / SendGrid API                    │
+│     Gửi email xác nhận mượn, nhắc hạn, thông báo phạt  │
+└─────────────────────────────────────────────────────────┘
+```
+
+*Hình 3.3. Mô hình triển khai hệ thống*
+
+Nginx đóng vai trò reverse proxy, tiếp nhận tất cả các yêu cầu từ client và chuyển tiếp đến ứng dụng Django đang chạy qua Gunicorn. Các tác vụ nặng như gửi email hàng loạt và xử lý OCR được thực thi bất đồng bộ thông qua APScheduler hoặc Celery để không ảnh hưởng đến trải nghiệm người dùng. Cơ sở dữ liệu được sao lưu tự động mỗi ngày để đảm bảo toàn vẹn dữ liệu.
+
+---
+
+# CHƯƠNG 4: KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN
+
+## 4.1. Kết quả đạt được
+
+Qua quá trình nghiên cứu và phân tích, đề tài đã đạt được các kết quả sau:
+
+**Về mặt phân tích và thiết kế:** Nhóm đã khảo sát toàn diện hoạt động của thư viện Central City Library dưới góc độ cả Sinh viên lẫn Thủ thư, từ đó xác định đầy đủ 10 use case nghiệp vụ cốt lõi. Mỗi use case được mô tả chi tiết kèm biểu đồ trình tự và biểu đồ lớp phân tích, tạo nền tảng vững chắc cho giai đoạn lập trình tiếp theo.
+
+**Về thiết kế cơ sở dữ liệu:** Mô hình ERD gồm 7 bảng được xây dựng nhất quán, đảm bảo tính toàn vẹn dữ liệu thông qua các ràng buộc khóa ngoại và quy tắc nghiệp vụ. Cấu trúc phân tách giữa `books` và `book_copies` cho phép quản lý từng bản sách vật lý một cách độc lập, là nền tảng cho chức năng quét barcode.
+
+**Về thiết kế giao diện:** Bộ wireframe/mockup cho 10 màn hình chính đã được xây dựng, bao phủ toàn bộ luồng sử dụng của cả hai nhóm người dùng, từ trang chủ tìm kiếm đến các nghiệp vụ quản lý chuyên sâu của thủ thư.
+
+**Về kiến trúc hệ thống:** Kiến trúc ba tầng kết hợp với mô hình triển khai thực tế (Nginx + Django + MySQL) được thiết kế phù hợp với quy mô thư viện vừa và nhỏ, đảm bảo các yêu cầu phi chức năng về hiệu năng, bảo mật và độ sẵn sàng.
+
+## 4.2. Hạn chế
+
+Trong phạm vi nghiên cứu và thời gian thực hiện, đề tài vẫn còn một số hạn chế nhất định. Hệ thống chưa bao gồm chức năng thanh toán tiền phạt trực tuyến, hiện tại chỉ dừng ở mức ghi nhận và thông báo. Tính năng gợi ý sách tự động dựa trên lịch sử mượn (Recommendation System) và chức năng OCR nâng cao nhận dạng tiếng Việt có dấu mới được định hướng ở mức khái niệm, chưa đi sâu vào thiết kế thuật toán cụ thể. Ngoài ra, hệ thống hiện chưa hỗ trợ giao diện dành riêng cho thiết bị di động.
+
+## 4.3. Hướng phát triển
+
+Trên cơ sở kết quả đạt được, nhóm đề xuất các hướng phát triển trong tương lai như sau:
+
+**Tích hợp thanh toán trực tuyến:** Kết nối với các cổng thanh toán phổ biến tại Việt Nam (VNPay, MoMo) để Sinh viên có thể nộp phạt trực tuyến mà không cần đến quầy thủ thư.
+
+**Phát triển ứng dụng di động:** Xây dựng ứng dụng iOS/Android cho phép Sinh viên tra cứu sách, kiểm tra hạn trả và nhận thông báo push notification thay vì chỉ qua email.
+
+**Tích hợp hệ thống gợi ý sách:** Áp dụng thuật toán Collaborative Filtering hoặc Content-based Filtering để gợi ý sách phù hợp dựa trên lịch sử mượn của từng Sinh viên, góp phần thúc đẩy văn hóa đọc.
+
+**Nâng cấp chức năng OCR:** Tích hợp Google Vision API hoặc mô hình ngôn ngữ lớn để cải thiện độ chính xác nhận dạng tiếng Việt có dấu, mở rộng sang định dạng sách điện tử (EPUB, DJVU).
+
+**Liên kết đa thư viện:** Mở rộng hệ thống để hỗ trợ mạng lưới nhiều thư viện liên kết, cho phép Sinh viên tra cứu và đặt mượn sách từ các thư viện khác trong cùng hệ thống.
+
+**Tích hợp chip RFID:** Thay thế barcode truyền thống bằng công nghệ RFID để tăng tốc độ kiểm kê hàng loạt và tự động hóa quy trình mượn trả tại kiosk tự phục vụ.
+
+---
+
+## Tài liệu tham khảo
+
+[1] Sommerville, I. (2016). *Software Engineering* (10th ed.). Pearson Education.
+
+[2] Larman, C. (2004). *Applying UML and Patterns: An Introduction to Object-Oriented Analysis and Design and Iterative Development* (3rd ed.). Prentice Hall.
+
+[3] Elmasri, R., & Navathe, S. B. (2015). *Fundamentals of Database Systems* (7th ed.). Pearson Education.
+
+[4] Django Software Foundation. (2024). *Django Documentation*. https://docs.djangoproject.com/
+
+[5] Bộ Văn hóa, Thể thao và Du lịch. (2021). *Chiến lược phát triển văn hóa đọc trong cộng đồng đến năm 2030*. Hà Nội.
+
+[6] Smith, M., & Brown, T. (2020). *Library Automation: An Introduction to Integrated Library Systems*. ALA Editions.
