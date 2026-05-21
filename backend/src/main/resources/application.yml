@@ -1,0 +1,66 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: library
+
+  data:
+    web:
+      pageable:
+        one-indexed-parameters: true
+
+  servlet:
+    multipart:
+      max-file-size: 2048MB
+      max-request-size: 2048MB
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/library_management1
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+jwt:
+  access-token-expiration: 900000
+  refresh-token-expiration: 604800000
+  secret: ${JWT_SECRET}
+
+upload:
+  file:
+    uri: file:///E:/Campuslink/library-management-system/upload/
+    image-uri: file:///E:/Campuslink/library-management-system/upload/images/
+    video-uri: file:///E:/Campuslink/library-management-system/upload/videos/
+    ocr-uri: file:///E:/Campuslink/library-management-system/upload/ocr/
+
+app:
+  reminder:
+    days-before: 2
+ocr-uri: file:///E:/Campuslink/library-management-system/upload/ocr/
+
+
+tesseract:
+  data:
+    path: C:/Program Files/Tesseract-OCR/tessdata
+  language: vie+eng

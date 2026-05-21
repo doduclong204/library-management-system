@@ -1,0 +1,7 @@
+Sprint,User Story ID,Title,Task,Assignee,Status
+Sprint 1,US-07,Login,Design user table,,To Do
+Sprint 1,US-07,Login,Implement login API,,To Do
+Sprint 1,US-07,Login,Implement authentication,,To Do
+Sprint 1,US-01,Manage Books,Design book database table,,To Do
+Sprint 1,US-01,Manage Books,Implement CRUD API,,To Do
+Sprint 1,US-01,Manage Books,Build UI for book management,,To Do

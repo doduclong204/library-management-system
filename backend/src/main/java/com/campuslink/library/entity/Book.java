@@ -1,0 +1,55 @@
+package com.campuslink.library.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "books", indexes = {
+        @Index(columnList = "isbn", unique = true),
+        @Index(columnList = "title")
+})
+public class Book {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(unique = true, nullable = false)
+    private String isbn;
+
+    @Column(nullable = false)
+    private String title;
+
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    private String genre;
+
+    private Integer publicationYear;
+
+    @Column(columnDefinition = "int default 1")
+    private Integer totalCopies = 1;
+
+    @Column(columnDefinition = "int default 1")
+    private Integer availableCopies = 1;
+
+    @Column(columnDefinition = "text")
+    private String fullText;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal price = BigDecimal.ZERO;
+
+    @ManyToMany(mappedBy = "books")
+    private List<Author> authors;
+
+    @OneToMany(mappedBy = "book")
+    private List<BookCopy> bookCopies;
+}

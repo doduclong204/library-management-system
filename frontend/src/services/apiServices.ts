@@ -1,0 +1,103 @@
+import api from "./api";
+import type {
+  ApiResponse, ApiPagination, Book, BorrowRecord, BorrowRequest,
+  BorrowResponse, Fine, User, BookRequest, PatronSearchResult, BookCopy
+} from "@/types";
+
+// Tham số phân trang + filter sách — khớp với BookController.java
+export interface BookQueryParams {
+  page?: number;       // số trang, bắt đầu từ 1 (backend: @RequestParam defaultValue="1")
+  size?: number;       // số sách mỗi trang (backend: @RequestParam defaultValue="10")
+  keyword?: string;    // tìm theo title / isbn / tác giả / fullText
+  genre?: string;      // lọc theo thể loại
+  authorName?: string; // lọc theo tên tác giả
+  yearFrom?: number;   // lọc năm xuất bản từ
+  yearTo?: number;     // lọc năm xuất bản đến
+  sortBy?: string;     // sắp xếp
+}
+
+export const bookApi = {
+  // GET /books?page=1&size=10&keyword=...&genre=...
+  getAll: (params?: BookQueryParams) =>
+    api.get<ApiResponse<ApiPagination<Book>>>("/books", { params }),
+
+  // GET /books/{id}
+  getById: (id: number) =>
+    api.get<ApiResponse<Book>>(`/books/${id}`),
+
+  create: (data: BookRequest) =>
+    api.post<ApiResponse<Book>>("/books", data),
+
+  update: (id: number, data: BookRequest) =>
+    api.put<ApiResponse<Book>>(`/books/${id}`, data),
+
+  delete: (id: number) =>
+    api.delete<ApiResponse<{ message: string }>>(`/books/${id}`),
+};
+
+export const borrowApi = {
+  borrow: (data: BorrowRequest) =>
+    api.post<ApiResponse<BorrowResponse>>("/borrows", data),
+
+  return: (data: { borrowId: string; returnDate: string }) =>
+    api.post<ApiResponse<BorrowRecord>>("/return", data),
+
+  getMine: () =>
+    api.get<ApiResponse<BorrowRecord[]>>("/borrows/my"),
+
+  getAll: (params?: Record<string, string | number>) =>
+    api.get<ApiResponse<ApiPagination<BorrowRecord>>>("/borrows", { params }),
+};
+
+export const userApi = {
+  getMe: () =>
+    api.get<ApiResponse<User>>("/users/me"),
+
+  updateMe: (data: { username?: string; full_name?: string; avatar?: string }) =>
+    api.put<ApiResponse<User>>("/users/me", data),
+
+  getAll: (params?: Record<string, string | number>) =>
+    api.get<ApiResponse<ApiPagination<User>>>("/users", { params }),
+
+  getById: (id: number) =>
+    api.get<ApiResponse<User>>(`/users/${id}`),
+};
+
+export const fineApi = {
+  getAll: () =>
+    api.get<ApiResponse<Fine[]>>("/fines"),
+
+  pay: (fineId: string) =>
+    api.post<ApiResponse<{ message: string }>>(`/fines/${fineId}/pay`),
+};
+
+export const ocrApi = {
+  upload: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post<ApiResponse<{ text: string }>>("/ocr", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+};
+
+export const recommendApi = {
+  get: (userId: number) =>
+    api.get<ApiResponse<Book[]>>(`/recommendations/${userId}`),
+};
+
+export const patronApi = {
+  search: async (email: string) => {
+    const res = await api.get<PatronSearchResult>("/patrons/search", {
+      params: { email },
+    });
+    return { data: { data: res.data ? [res.data] : [] } };
+  },
+};
+
+export const bookCopyApi = {
+  searchByIsbnOrBarcode: (query: string) =>
+    api.get<ApiResponse<BookCopy[]>>("/book-copies/search", {
+      params: { q: query },
+    }),
+};
